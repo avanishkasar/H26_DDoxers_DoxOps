@@ -21,6 +21,7 @@ from .models import DependencyCapsule, RunSummary
 from .pipeline import Pipeline, RunOptions
 from .report import write_outputs
 from .settings import load_dotenv
+from .workspace import force_rmtree
 
 DEFAULT_TARGET = "https://github.com/rishrek/LinkWatch"
 console = Console()
@@ -126,8 +127,18 @@ def scan(
         keep_envs=keep_envs,
         scan_only=True,
     )
-    summary = Pipeline(opts, log=console.print).run()
+    summary = _run_pipeline(opts)
     _finish(summary, out, fail_on)
+
+
+def _run_pipeline(opts: RunOptions) -> RunSummary:
+    """Run the pipeline, turning expected failures (bad target, missing uv, clone errors) into clean messages."""
+    try:
+        return Pipeline(opts, log=console.print).run()
+    except (OSError, RuntimeError) as exc:
+        if not opts.keep_envs:
+            force_rmtree(opts.out_dir / "work")
+        raise click.ClickException(f"{type(exc).__name__}: {exc}") from exc
 
 
 def _ollama_problem(host: str, model: str) -> str | None:
@@ -155,7 +166,12 @@ def _ollama_problem(host: str, model: str) -> str | None:
 @click.option("--max-repairs", default=2, show_default=True, help="Repair rounds after a failed verification.")
 @click.option("--only", multiple=True, help="Only migrate these dependencies (repeatable).")
 @click.option("--max-deps", type=int, default=None, help="Migrate at most N highest-risk dependencies.")
-@click.option("--fail-on", type=click.Choice(["low", "medium", "high", "critical"]), default=None)
+@click.option(
+    "--fail-on",
+    type=click.Choice(["low", "medium", "high", "critical"]),
+    default=None,
+    help="Exit with code 3 if any dependency reaches this severity (for CI).",
+)
 def run(
     target: str,
     pythons: tuple[str, ...],
@@ -196,7 +212,7 @@ def run(
         offline_index=offline_index,
         keep_envs=keep_envs,
     )
-    summary = Pipeline(opts, log=console.print).run()
+    summary = _run_pipeline(opts)
     _finish(summary, out, fail_on)
 
 
@@ -220,7 +236,14 @@ def doctor(provider: str, model: str | None, pythons: tuple[str, ...]) -> None:
         line(bool(path), tool, path or "not found on PATH")
     if shutil.which("uv"):
         for py in pythons:
-            proc = subprocess.run(["uv", "python", "find", py], capture_output=True, text=True, check=False)
+            proc = subprocess.run(
+                ["uv", "python", "find", py],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
             found = proc.returncode == 0
             line(found, f"Python {py}", proc.stdout.strip() if found else f"missing: run 'uv python install {py}'")
     if provider == "ollama":

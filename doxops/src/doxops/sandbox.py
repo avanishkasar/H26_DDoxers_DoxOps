@@ -192,6 +192,8 @@ class Sandbox:
                 "-rA",
                 "--rootdir",
                 str(tree),
+                "--basetemp",  # keep pytest's tmp_path inside the output folder (no user names in logs)
+                str(self.work_dir / f"pytest-{label}-py{env.python}"),
             ],
             tree,
             python=env.python,

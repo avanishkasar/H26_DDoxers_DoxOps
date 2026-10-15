@@ -21,6 +21,8 @@ def _probe(module: str, strict: bool) -> tuple[bool, str | None]:
         [sys.executable, *flags, "-c", f"import {module}"],
         capture_output=True,
         text=True,
+        encoding="utf-8",  # the child writes UTF-8 (PYTHONIOENCODING); never decode with the Windows code page
+        errors="replace",
         timeout=120,
         check=False,
     )

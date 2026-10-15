@@ -100,11 +100,16 @@ class OllamaProvider(Provider):
             raise LLMError(f"cannot reach Ollama at {self.host}: start it with 'ollama serve'") from exc
         except httpx.TimeoutException as exc:
             raise LLMError(f"Ollama timed out after {self.timeout.read:.0f}s") from exc
+        except httpx.HTTPError as exc:  # dropped connection, protocol error...
+            raise LLMError(f"Ollama connection failed: {exc}") from exc
         if resp.status_code == 404:
             raise LLMError(f"model '{self.model}' is not pulled: run 'ollama pull {self.model}'")
         if resp.status_code >= 400:
             raise LLMError(f"Ollama error {resp.status_code}: {resp.text[:300]}")
-        return resp.json().get("message", {}).get("content", "")
+        try:
+            return resp.json().get("message", {}).get("content", "")
+        except ValueError as exc:
+            raise LLMError(f"Ollama returned a non-JSON reply: {resp.text[:200]}") from exc
 
     def info(self) -> ModelInfo:
         details: dict[str, str] = {"host": self.host}
@@ -180,7 +185,10 @@ class GeminiProvider(Provider):
                 continue
             if resp.status_code >= 400:
                 raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
-            parts = (resp.json().get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+            try:
+                parts = (resp.json().get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+            except ValueError as exc:
+                raise LLMError(f"Gemini API returned a non-JSON reply: {resp.text[:200]}") from exc
             return "".join(p.get("text", "") for p in parts if not p.get("thought"))
         raise LLMError("Gemini API kept failing after retries")
 

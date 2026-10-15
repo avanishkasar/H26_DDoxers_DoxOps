@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -89,16 +90,25 @@ class PyPIClient:
     def __init__(self, cache_file: Path | None = None, offline: bool = False) -> None:
         self.cache_file = cache_file
         self.offline = offline
-        self._cache: dict[str, dict] = {}
+        self._stored: dict[str, dict] = {}
         if cache_file and cache_file.is_file():
             try:
-                self._cache = json.loads(cache_file.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                self._cache = {}
+                self._stored = json.loads(cache_file.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                self._stored = {}
+        # online runs always fetch fresh metadata; the stored copy only serves --offline-index
+        self._cache: dict[str, dict] = dict(self._stored) if offline else {}
 
     def _save(self) -> None:
-        if self.cache_file:
-            self.cache_file.write_text(json.dumps(self._cache), encoding="utf-8")
+        if not self.cache_file:
+            return
+        self._stored.update(self._cache)
+        tmp = self.cache_file.with_suffix(f".{os.getpid()}.tmp")
+        try:
+            tmp.write_text(json.dumps(self._stored), encoding="utf-8")
+            os.replace(tmp, self.cache_file)  # atomic, so concurrent runs never read half a file
+        except OSError:
+            tmp.unlink(missing_ok=True)
 
     async def _get(self, client: httpx.AsyncClient, url: str, headers: dict[str, str] | None = None) -> dict | None:
         if url in self._cache:
