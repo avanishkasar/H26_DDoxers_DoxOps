@@ -21,6 +21,7 @@ EXPLANATIONS = {
     "UnicodeDecodeError": "Text decoding differs: charset detection or default encoding changed.",
     "DeprecationWarning": "A deprecated API is used and warnings are configured as errors.",
     "Skipped": "The test ran before but is skipped after the change, so it no longer proves anything.",
+    "Vanished": "The test passed before but did not run at all afterwards (its module failed to import or collect).",
 }
 
 
@@ -47,7 +48,8 @@ def compare(baseline: SuiteRun, candidate: SuiteRun, module_to_dist: dict[str, s
     for nodeid in sorted(set(before) | set(after)):
         b, a = before.get(nodeid), after.get(nodeid)
         if b and not a:
-            change = "removed"
+            # tests cannot be edited by a runtime migration, so a passing test that disappears was broken by it
+            change = "regressed" if b.outcome in _RAN_OK else "removed"
         elif a and not b:
             change = "new"
         else:
@@ -66,6 +68,8 @@ def compare(baseline: SuiteRun, candidate: SuiteRun, module_to_dist: dict[str, s
         fc = a.failure_class if a else None
         if a and a.outcome == "skipped" and change in ("regressed", "still-failing"):
             fc = "Skipped"
+        elif not a and change == "regressed":
+            fc = "Vanished"
         comp.deltas.append(
             TestDelta(
                 nodeid=nodeid,
