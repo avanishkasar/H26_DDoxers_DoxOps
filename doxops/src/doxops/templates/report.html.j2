@@ -107,20 +107,20 @@
         {% for r in c.runtime_usage[:20] %}<li><span class="badge b-verified">VERIFIED</span> runtime <code>{{ r.caller_file }}:{{ r.caller_line }}</code> → <code>{{ r.module }}.{{ r.function }}</code> ×{{ r.count }}</li>{% endfor %}</ul>
       {% if c.analysis %}<h3>Analysis</h3><p><span class="badge b-{{ c.analysis.provenance.value }}">{{ badge[c.analysis.provenance] }}</span> {{ c.analysis.text }}</p>{% endif %}
       <h3>Proposed replacement</h3>
-      {% if c.proposed_replacement %}<p><span class="badge b-{{ c.proposed_replacement.provenance.value }}">{{ badge[c.proposed_replacement.provenance] }}</span> {{ c.proposed_replacement.text }}</p>{% else %}<p class="muted">Not attempted.</p>{% endif %}
+      {% if c.proposed_replacement %}<p><span class="badge b-{{ c.proposed_replacement.provenance.value }}">{{ badge[c.proposed_replacement.provenance] }}</span> {{ c.proposed_replacement.text }}{% if c.proposed_replacement.evidence_ids %} <code>{{ c.proposed_replacement.evidence_ids | join(", ") }}</code>{% endif %}</p>{% else %}<p class="muted">Not attempted.</p>{% endif %}
       {% if c.rationale %}<p><span class="badge b-ai">AI</span> {{ c.rationale.text }}</p>{% endif %}
       {% if c.migration_steps %}<h3>Migration steps</h3><ol>{% for f in c.migration_steps %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% endfor %}</ol>{% endif %}
       {% if c.suggested_tests %}<h3>Suggested tests</h3><ul>{% for f in c.suggested_tests %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% endfor %}</ul>{% endif %}
       <h3>Executed test results</h3>
-      {% if c.executed_results %}<div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th></tr>
-        {% for r in c.executed_results %}<tr><td>{{ r.python }}</td><td class="ok">{{ r.fixed }}</td><td class="{{ 'fail' if r.regressed else '' }}">{{ r.regressed }}</td><td>{{ r.still_failing }}</td><td>{{ r.still_passing }}</td><td>{{ r.dependency_warnings_before }} → {{ r.dependency_warnings_after }}</td></tr>{% endfor %}
+      {% if c.executed_results %}<div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        {% for r in c.executed_results %}<tr><td>{{ r.python }}</td><td class="ok">{{ r.fixed }}</td><td class="{{ 'fail' if r.regressed else '' }}">{{ r.regressed }}</td><td>{{ r.still_failing }}</td><td>{{ r.still_passing }}</td><td>{{ r.dependency_warnings_before }} → {{ r.dependency_warnings_after }}</td><td><code>{% for a in c.attempts if a.accepted %}{% for run in a.runs if run.python == r.python %}{{ run.test_evidence or '' }}{% endfor %}{% endfor %}</code></td></tr>{% endfor %}
       </table></div>{% else %}<p class="muted">No migration tests executed.</p>{% endif %}
       <h3>Attempts</h3>
       <ul>{% for a in c.attempts %}<li>#{{ a.attempt }} {{ a.verdict }}{% if a.patch_path %} · <code>{{ a.patch_path }}</code>{% endif %}</li>{% else %}<li class="muted">None</li>{% endfor %}</ul>
       <h3>Compatibility gaps</h3>
-      <ul>{% for f in c.compatibility_gaps %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% else %}<li class="muted">None observed in executed tests.</li>{% endfor %}</ul>
+      <ul>{% for f in c.compatibility_gaps %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}{% if f.evidence_ids %} <code>{{ f.evidence_ids | join(", ") }}</code>{% endif %}</li>{% else %}<li class="muted">None observed in executed tests.</li>{% endfor %}</ul>
       <h3>Open concerns and limitations</h3>
-      <ul>{% for f in c.open_concerns %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% else %}<li class="muted">None.</li>{% endfor %}</ul>
+      <ul>{% for f in c.open_concerns %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}{% if f.evidence_ids %} <code>{{ f.evidence_ids | join(", ") }}</code>{% endif %}</li>{% else %}<li class="muted">None.</li>{% endfor %}</ul>
     </div>
   </details>
   {% endfor %}

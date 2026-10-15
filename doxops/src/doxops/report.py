@@ -92,12 +92,14 @@ def capsule_markdown(c: DependencyCapsule, summary: RunSummary) -> str:
                 f"{comp.dependency_warnings_before} -> {comp.dependency_warnings_after} |"
             )
         out.append("")
+        run_ids = {r.python: r.test_evidence for a in c.attempts if a.accepted for r in a.runs if r.test_evidence}
         for comp in c.executed_results:
             for d in comp.deltas:
                 if d.change in ("fixed", "regressed", "still-failing"):
                     out.append(
                         f"- **[VERIFIED]** py{comp.python} `{d.nodeid}`: {d.before} -> {d.after} ({d.change})"
                         + (f" [{d.failure_class}]" if d.failure_class else "")
+                        + (f" (evidence: {run_ids[comp.python]})" if comp.python in run_ids else "")
                     )
     else:
         out.append("- No tests were executed for a migration.")
@@ -150,11 +152,21 @@ def next_actions(s: RunSummary) -> list[str]:
         if c.status == "verified":
             out.append(f"Apply `{c.dependency}`: verified on every target Python (see `capsules/{c.dependency}.md`).")
         elif c.status == "partially-verified":
-            out.append(f"Review `{c.dependency}`: accepted, but some failures it caused remain.")
+            out.append(
+                f"Review `{c.dependency}`: its tests pass, but part of the change is not proven "
+                f"(see open concerns in `capsules/{c.dependency}.md`)."
+            )
         elif c.status in ("unverified", "failed"):
             out.append(f"Investigate `{c.dependency}` by hand: no attempt passed verification.")
         else:
             out.append(f"Run `doxops run --only {c.dependency}` to plan and verify `{c.dependency}`.")
+    combined_regressions = sum(c.regressed for c in s.combined_comparisons)
+    if combined_regressions:
+        out.insert(
+            0,
+            f"Warning: applying all accepted migrations together regressed {combined_regressions} test result(s); "
+            "apply them one by one (see the combined run table).",
+        )
     if s.combined_patch:
         out.append(f"All accepted migrations together: `git apply {s.combined_patch}` (re-run the tests afterwards).")
     return out
