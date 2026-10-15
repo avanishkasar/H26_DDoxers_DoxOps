@@ -44,7 +44,7 @@ DoxOps connects AI-assisted analysis to repository inspection and execution:
 | 3. Propose a replacement and migration for **all** of them | Gemma 4 returns a schema-constrained plan (strategy, package, version spec, steps, minimal edits, tests, expected gaps); DoxOps vets the package on PyPI to catch hallucinations | AI |
 | 4. Execute tests on original and replacement | Fresh `uv` virtualenvs per attempt on every target Python, pytest with a probe plugin, per-test outcomes | VERIFIED |
 | 5. Compare and list compatibility gaps and unresolved risks | Test-by-test diff (fixed / regressed / still failing), failure category explanations, deprecation-warning deltas, leftover-usage check, untested usage sites | VERIFIED |
-| 6. Generate a reusable Dependency Exit Capsule | `capsule.json` (published JSON Schema), one Markdown + JSON capsule per dependency, an HTML report, `git apply`-able patches, and the migrated tree | all three, always separated |
+| 6. Generate a reusable Dependency Exit Capsule | `capsule.json` (the whole run), one Markdown + JSON capsule per dependency (validates against the published [JSON Schema](doxops/schema/capsule.schema.json)), an HTML report, `git apply`-able patches, and the migrated tree | all three, always separated |
 
 ## Quick start
 
@@ -57,7 +57,7 @@ winget install --id astral-sh.uv -e
 ollama pull gemma4:e4b
 git clone https://github.com/avanishkasar/H26_DDoxers_DoxOps.git
 Set-Location H26_DDoxers_DoxOps
-.\scripts\demo.ps1 -Model gemma4:e4b          # every at-risk dependency; add -MaxDeps 4 for a short live demo
+powershell -ExecutionPolicy Bypass -File .\scripts\demo.ps1   # every at-risk dependency; add -MaxDeps 4 for a short live demo
 ```
 
 ### macOS / Linux
@@ -101,8 +101,8 @@ Options for both `scan` and `run`:
 | `--out DIR` | `doxops-out/<timestamp>` | Output folder |
 | `--exclude DIR` | `doxops` | Top-level folders to ignore when scanning the target (repeatable) |
 | `--ref REF` | default branch | Branch or tag to clone when `TARGET` is a URL |
-| `--offline-index` | off | Use only cached PyPI metadata (no network lookups) |
-| `--keep-envs` | off | Keep virtualenvs and attempt trees for inspection |
+| `--offline-index` | off | Use PyPI metadata cached by earlier runs (per-user cache, `DOXOPS_CACHE_DIR` to move it); installs still need the network |
+| `--keep-envs` | off | Keep `work/` (target clone, virtualenvs, attempt trees, raw probe files) for inspection |
 | `--fail-on LEVEL` | off | Exit code 3 if any dependency reaches `low`/`medium`/`high`/`critical` (CI gate) |
 
 Options for `run` only:
@@ -141,6 +141,8 @@ doxops-out/<run>/
 ├── evidence/E001-*.log      # every executed command: command, cwd, exit code, output; SHA-256 in capsule.json
 └── llm/NNN-*.prompt.md|response.txt   # every prompt and raw model reply
 ```
+
+`work/` (clone, virtualenvs, attempt trees) is deleted at the end unless `--keep-envs` is given. Paths to the output folder and home directory are written as `<out>` and `~`, so reports can be shared without exposing a user name.
 
 ## Architecture
 
@@ -185,7 +187,8 @@ flowchart LR
 - **No whole-file rewrites**: edits are find/replace pairs that must match exactly once, so the model cannot silently drop code.
 - **Manifests are ours**: the model chooses a strategy and version spec; DoxOps rewrites every declaration itself and validates the PEP 440 specifier.
 - **Hallucination check**: the proposed package must exist on PyPI, not be quarantined/archived, and have a release matching the spec, before anything is installed.
-- **Integrity guard**: tests and test-harness files (`conftest.py`, `pytest.ini`, `tox.ini`, `noxfile.py`) cannot be edited to make a runtime migration pass, and a test that passed before but is skipped afterwards counts as a regression.
+- **Integrity guard**: tests and test-harness files (`conftest.py`, `pytest.ini`, `tox.ini`, `noxfile.py`) cannot be edited to make a runtime migration pass. A test that passed before but is skipped, or no longer runs at all, afterwards counts as a regression. The one exception is a dependency used only as a test tool (such as `nose`), whose migration has to touch test files.
+- **Honest status**: a passing plan is only `verified` when the test run actually reached the code that uses the dependency; if none of its call sites ran, or a standard-library replacement is newer than the project's lowest supported Python, the capsule says `partially-verified` and explains why.
 - **AI stays labelled AI**: once a plan passes, only the executed choice (strategy, package, version spec) becomes VERIFIED; Gemma's analysis, rationale, steps and suggested tests keep the AI label.
 - **Residual check**: after `replace`/`stdlib`/`remove`, any leftover import or build-file command of the old dependency rejects the attempt.
 - **Acceptance rule**: install succeeds on every Python, zero regressions against the baseline, every edit applied, and the new package imports cleanly.
@@ -327,6 +330,7 @@ cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
 - PyPI-derived signals (age, classifiers, wording) are heuristics. Package metadata and installs need network access to PyPI.
 - Two libraries doing the same job (for example `chardet` next to `charset-normalizer`) are not scored as redundant by themselves; DoxOps gives Gemma the list of packages already installed through other dependencies so a plan can prefer one of them.
 - `NO_TIMEOUT` only knows `requests`; other HTTP clients without a default timeout are not checked.
+- The environment is installed from the requirement files when they exist, so a second install path (for LinkWatch, `pip install .` with `pydantic>=2` from `pyproject.toml`) is reported as `MANIFEST_DRIFT` but not executed.
 - Security vulnerabilities are out of scope for this challenge and are not scored.
 
 ## Disclosure: pre-existing work and AI usage
