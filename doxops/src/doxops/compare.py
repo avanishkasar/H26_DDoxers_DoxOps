@@ -6,6 +6,7 @@ from .models import Comparison, SuiteRun, TestDelta
 from .risk import attribute_warning
 
 _PASS = {"passed", "xfailed", "skipped"}
+_RAN_OK = {"passed", "xfailed"}
 
 EXPLANATIONS = {
     "ImportError": "A name the code imports no longer exists in the installed version (API removed or moved).",
@@ -19,6 +20,7 @@ EXPLANATIONS = {
     "AssertionError": "The code runs but produces a different result: a behavioural incompatibility.",
     "UnicodeDecodeError": "Text decoding differs: charset detection or default encoding changed.",
     "DeprecationWarning": "A deprecated API is used and warnings are configured as errors.",
+    "Skipped": "The test ran before but is skipped after the change, so it no longer proves anything.",
 }
 
 
@@ -50,7 +52,10 @@ def compare(baseline: SuiteRun, candidate: SuiteRun, module_to_dist: dict[str, s
             change = "new"
         else:
             assert a and b
-            b_ok, a_ok = b.outcome in _PASS, a.outcome in _PASS
+            # a test that ran and passed before but is skipped afterwards counts as a regression, so a
+            # migration cannot hide breakage by skipping tests; a failure turned into a skip is not a fix
+            b_ok = b.outcome in _PASS
+            a_ok = a.outcome in _RAN_OK or (a.outcome == "skipped" and b.outcome == "skipped")
             change = {
                 (False, True): "fixed",
                 (True, False): "regressed",
@@ -59,6 +64,8 @@ def compare(baseline: SuiteRun, candidate: SuiteRun, module_to_dist: dict[str, s
             }[(b_ok, a_ok)]
         setattr(comp, change.replace("-", "_"), getattr(comp, change.replace("-", "_")) + 1)
         fc = a.failure_class if a else None
+        if a and a.outcome == "skipped" and change in ("regressed", "still-failing"):
+            fc = "Skipped"
         comp.deltas.append(
             TestDelta(
                 nodeid=nodeid,
@@ -66,7 +73,7 @@ def compare(baseline: SuiteRun, candidate: SuiteRun, module_to_dist: dict[str, s
                 before=b.outcome if b else "absent",
                 after=a.outcome if a else "absent",
                 change=change,  # type: ignore[arg-type]
-                after_message=(a.message if a and a.outcome not in _PASS else "")[:600],
+                after_message=(a.message if a and (a.outcome not in _PASS or fc == "Skipped") else "")[:600],
                 failure_class=fc,
                 explanation=explain(fc) if change in ("regressed", "still-failing") else None,
             )

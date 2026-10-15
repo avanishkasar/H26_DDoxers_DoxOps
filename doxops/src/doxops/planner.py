@@ -40,6 +40,7 @@ from .pypi import PyPIClient, available_versions, python_supported
 MAX_FULL_FILE_LINES = 300
 WINDOW = 15
 MANIFEST_NAMES = re.compile(r"(^|/)(requirements[^/]*\.txt|pyproject\.toml|setup\.cfg|setup\.py)$")
+TEST_HARNESS = re.compile(r"(^|/)(conftest\.py|pytest\.ini|tox\.ini|noxfile\.py|\.coveragerc)$")
 
 SYSTEM_PROMPT = """You are DoxOps, a careful Python maintenance engineer.
 You plan the safe exit from ONE at-risk dependency in a real repository.
@@ -105,6 +106,22 @@ def file_context(tree: Path, usage: list[UsageSite]) -> str:
     return "\n\n".join(chunks) or "(no Python file imports it directly)"
 
 
+def transitive_packages(ctx: PlanContext, limit: int = 40) -> list[str]:
+    """Installed packages the project gets for free through other dependencies (a replacement may already be here)."""
+    run = next((r for r in ctx.baseline if r.installed), None)
+    if run is None:
+        return []
+    declared = set(ctx.other_dependencies) | {ctx.dist}
+    out: list[str] = []
+    for name, version in sorted(run.installed.items()):
+        if name in declared:
+            continue
+        parents = sorted(p for p, reqs in run.requires.items() if name in reqs and p != ctx.dist)
+        if parents:
+            out.append(f"{name} {version} (required by {', '.join(parents)})")
+    return out[:limit]
+
+
 def build_prompt(ctx: PlanContext) -> str:
     meta = ctx.metadata
     facts = {
@@ -116,6 +133,7 @@ def build_prompt(ctx: PlanContext) -> str:
         "pypi_project_status": meta.project_status if meta else None,
         "target_python_versions": ctx.pythons,
         "other_project_dependencies": ctx.other_dependencies,
+        "already_installed_through_other_dependencies": transitive_packages(ctx),
         "risk_score": ctx.risk.score,
         "risk_indicators": [
             {"code": i.code, "provenance": i.provenance.value, "title": i.title, "detail": i.detail}
@@ -143,6 +161,7 @@ def build_prompt(ctx: PlanContext) -> str:
         "## Source files that use it\n" + file_context(ctx.tree, ctx.usage) + "\n\n"
         "## Task\nPlan the migration for this one dependency following the rules. "
         "If it is unused, choose 'remove'. If it is imported but undeclared, choose 'declare' with a safe specifier. "
+        "If a package that is already installed through another dependency does the same job, prefer it. "
         "If the build tooling (Makefile, Dockerfile, CI) calls a command from it, include edits for those files too."
     )
 
@@ -210,7 +229,9 @@ def vetting_blocks(v: CandidateVetting | None) -> list[str]:
     if v is None:
         return []
     return [
-        n for n in v.notes if "does not exist" in n or "Invalid version" in n or "No release" in n or "quarantined" in n
+        n
+        for n in v.notes
+        if any(k in n for k in ("does not exist", "Invalid version", "No release", "quarantined", "archived"))
     ]
 
 
@@ -314,7 +335,10 @@ def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list
             )
             continue
         if (
-            rel.startswith(("tests/", "test/")) or "/tests/" in rel or Path(rel).name.startswith("test_")
+            rel.startswith(("tests/", "test/"))
+            or "/tests/" in rel
+            or Path(rel).name.startswith("test_")
+            or TEST_HARNESS.search(rel)
         ) and not allow_tests:
             outcomes.append(
                 EditOutcome(
