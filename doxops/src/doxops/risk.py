@@ -303,7 +303,7 @@ def assess(inputs: RiskInputs) -> list[DependencyRisk]:
                             else f"Pinned {meta.pinned_version}, latest is {meta.latest_version}"
                         ),
                         detail=f"Exact pin blocks fixes{age_txt}.",
-                        weight=15 if behind > 0 else 5,
+                        weight=20 if behind >= 2 else (15 if behind == 1 else 5),
                         provenance=Provenance.OBSERVED,
                     )
                 )
@@ -405,6 +405,20 @@ def assess(inputs: RiskInputs) -> list[DependencyRisk]:
                     code="MONKEYPATCH",
                     title="Project monkeypatches this library globally",
                     detail="; ".join(f"{s.file}:{s.line} `{s.snippet}`" for s in patches[:3]),
+                    weight=10,
+                    provenance=Provenance.OBSERVED,
+                )
+            )
+
+        hangs = [s for s in usage_by_dist.get(dist, []) if s.kind == "no-timeout"]
+        if hangs:
+            ind.append(
+                RiskIndicator(
+                    code="NO_TIMEOUT",
+                    title="Network calls without a timeout",
+                    detail="; ".join(f"{s.file}:{s.line} `{s.snippet}`" for s in hangs[:3])
+                    + ". The call can hang forever, timeout handlers are unreachable, and a client with a default "
+                    "timeout (e.g. httpx, 5 s) changes behaviour on migration.",
                     weight=10,
                     provenance=Provenance.OBSERVED,
                 )

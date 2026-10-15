@@ -55,6 +55,12 @@ class FileScan:
     imported_top: set[str] = field(default_factory=set)
 
 
+# HTTP clients whose calls wait forever unless a timeout is passed (httpx, by contrast, defaults to 5 s)
+_NO_DEFAULT_TIMEOUT = {"requests"}
+_SESSION_FACTORIES = {"requests.Session", "requests.session", "requests.sessions.Session"}
+_HTTP_VERBS = {"get", "post", "put", "patch", "delete", "head", "options", "request"}
+
+
 def _is_private(name: str) -> bool:
     return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
@@ -67,6 +73,7 @@ class _Visitor(ast.NodeVisitor):
         self.result = FileScan()
         self._seen: set[tuple[int, str, str]] = set()
         self._parents: dict[int, ast.AST] = {}
+        self._sessions: dict[str, str] = {}  # local variable -> session factory it was created from
 
     def _snippet(self, line: int) -> str:
         return self.lines[line - 1].strip() if 0 < line <= len(self.lines) else ""
@@ -152,9 +159,43 @@ class _Visitor(ast.NodeVisitor):
             if dotted:
                 self._add(node, dotted, "monkeypatch")
 
+    def _callee(self, call: ast.AST) -> str | None:
+        if not isinstance(call, ast.Call):
+            return None
+        if isinstance(call.func, ast.Name):
+            return self.alias.get(call.func.id)
+        return self._resolve(call.func)
+
+    def _track_session(self, value: ast.AST, target: ast.AST | None) -> None:
+        factory = self._callee(value)
+        if factory in _SESSION_FACTORIES and isinstance(target, ast.Name):
+            self._sessions[target.id] = factory
+
+    def _check_timeout(self, node: ast.Call) -> None:
+        """requests.get(url) or session.get(url) without timeout= can hang forever."""
+        func = node.func
+        if not isinstance(func, ast.Attribute) or func.attr not in _HTTP_VERBS:
+            return
+        if any(k.arg == "timeout" or k.arg is None for k in node.keywords):  # explicit or forwarded via **kwargs
+            return
+        if isinstance(func.value, ast.Name) and func.value.id in self._sessions:
+            dotted = f"{self._sessions[func.value.id]}.{func.attr}"
+        else:
+            dotted = self._resolve(func)
+            if not dotted or dotted.rsplit(".", 1)[0] not in {*_NO_DEFAULT_TIMEOUT, *_SESSION_FACTORIES}:
+                return
+        if dotted.split(".", 1)[0] in _NO_DEFAULT_TIMEOUT:
+            self._add(node, dotted, "no-timeout")
+
     def visit_Assign(self, node: ast.Assign) -> None:
         for target in node.targets:
             self._check_patch(target, node)
+            self._track_session(node.value, target)
+        self.generic_visit(node)
+
+    def visit_With(self, node: ast.With) -> None:
+        for item in node.items:
+            self._track_session(item.context_expr, item.optional_vars)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
@@ -167,6 +208,7 @@ class _Visitor(ast.NodeVisitor):
             dotted = self._resolve(node.args[0])
             if dotted:
                 self._add(node, dotted, "monkeypatch")
+        self._check_timeout(node)
         self.generic_visit(node)
 
 
