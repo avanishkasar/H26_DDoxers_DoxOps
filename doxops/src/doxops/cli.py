@@ -130,6 +130,18 @@ def scan(
     _finish(summary, out, fail_on)
 
 
+def _ollama_problem(host: str, model: str) -> str | None:
+    """None when Ollama answers and the model is pulled, otherwise a one-line fix for the user."""
+    try:
+        tags = httpx.get(f"{host}/api/tags", timeout=10).json().get("models", [])
+    except (httpx.HTTPError, ValueError):
+        return f"Ollama is not reachable at {host}; start it with 'ollama serve'"
+    names = [m.get("name") for m in tags if m.get("name")]
+    if model not in names and f"{model}:latest" not in names:
+        return f"model {model} is not pulled (run 'ollama pull {model}'); available: {', '.join(names) or 'none'}"
+    return None
+
+
 @main.command()
 @_common
 @click.option(
@@ -165,6 +177,8 @@ def run(
         prov = build_provider(provider, model)
     except LLMError as exc:
         raise click.ClickException(str(exc)) from exc
+    if provider == "ollama" and (problem := _ollama_problem(prov.host, prov.model)):  # type: ignore[attr-defined]
+        raise click.ClickException(f"{problem}. Nothing was run; 'doxops scan' works without a model.")
     llm = StructuredLLM(prov, out / "llm")
     info = prov.info()
     console.print(f"Model: [bold]{info.model}[/] via {info.provider}")
@@ -211,19 +225,8 @@ def doctor(provider: str, model: str | None, pythons: tuple[str, ...]) -> None:
             line(found, f"Python {py}", proc.stdout.strip() if found else f"missing: run 'uv python install {py}'")
     if provider == "ollama":
         prov = build_provider("ollama", model)
-        try:
-            tags = httpx.get(f"{prov.host}/api/tags", timeout=10).json().get("models", [])  # type: ignore[attr-defined]
-            names = [m.get("name") for m in tags]
-            line(True, "Ollama", f"reachable at {prov.host}")  # type: ignore[attr-defined]
-            line(
-                prov.model in names,
-                "Model",
-                prov.model
-                if prov.model in names
-                else f"{prov.model} not pulled; available: {', '.join(n for n in names if n) or 'none'}",
-            )
-        except httpx.HTTPError:
-            line(False, "Ollama", f"not reachable at {prov.host}; run 'ollama serve'")  # type: ignore[attr-defined]
+        problem = _ollama_problem(prov.host, prov.model)  # type: ignore[attr-defined]
+        line(problem is None, "Ollama + model", problem or f"{prov.model} ready at {prov.host}")  # type: ignore[attr-defined]
     else:
         has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         line(has_key, "GEMINI_API_KEY", "set" if has_key else "missing (put it in .env)")
