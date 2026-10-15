@@ -40,6 +40,7 @@ from .planner import (
     apply_edits,
     build_prompt,
     build_repair_prompt,
+    failure_excerpts,
     normalize_plan,
     rewrite_manifests,
     summarise_problems,
@@ -334,7 +335,8 @@ class Pipeline:
         )
 
     def _relevant(self, comps: list[Comparison], ctx: PlanContext) -> list[Comparison]:
-        """For repair prompts: regressions always matter; pre-existing failures only if about this dependency."""
+        """For repair prompts: regressions and new failures (a module that no longer imports shows up as a new
+        ``<collection>`` error) always matter; pre-existing failures only if about this dependency."""
         modules = set(ctx.risk.imported_modules) | {ctx.dist}
         out: list[Comparison] = []
         for comp in comps:
@@ -343,6 +345,7 @@ class Pipeline:
                 d
                 for d in comp.deltas
                 if d.change == "regressed"
+                or (d.change == "new" and d.after in ("failed", "error"))
                 or (d.change == "still-failing" and any(m in d.after_message for m in modules))
             ]
             out.append(c)
@@ -353,8 +356,14 @@ class Pipeline:
         attempts: list[MigrationAttempt] = []
         plan: MigrationPlan | None = None
         problems: list[str] = []
+        failures: list[str] = []  # tracebacks of the tests the previous attempt broke
+        applied_diff = ""  # what DoxOps actually changed for the previous attempt
         for n in range(1, self.o.max_repairs + 2):
-            prompt = build_prompt(ctx) if plan is None else build_repair_prompt(ctx, plan, problems)
+            prompt = (
+                build_prompt(ctx)
+                if plan is None
+                else build_repair_prompt(ctx, plan, problems, failures=failures, applied_diff=applied_diff)
+            )
             purpose = f"{ctx.dist}-plan" if n == 1 else f"{ctx.dist}-repair{n - 1}"
             new_plan, call = self.o.llm.ask(SYSTEM_PROMPT, prompt, MigrationPlan, purpose, attempt=n)
             attempt = MigrationAttempt(attempt=n, plan=new_plan, llm_call=call)
@@ -366,6 +375,7 @@ class Pipeline:
                     break  # transport/config problem: re-asking will not help
                 continue
             plan = normalize_plan(new_plan, ctx.dist)
+            failures, applied_diff = [], ""  # this new plan has not been tested yet
             attempt.plan = plan
             if plan.replacement.strategy == "keep" and not plan.edits:
                 attempt.verdict = "model recommends keeping the dependency as is"
@@ -389,6 +399,7 @@ class Pipeline:
             failed_edits = [e for e in attempt.edits if not e.applied and e.error]
             if not attempt.syntax_ok:
                 problems = summarise_problems(attempt.edits, [], [], [])
+                applied_diff = unified_patch(base.tree, tree)
                 attempt.verdict = "edits produced invalid Python"
                 self.log(f"      attempt {n}: {attempt.verdict}")
                 continue
@@ -427,12 +438,15 @@ class Pipeline:
                 shutil.rmtree(tree, ignore_errors=True)
             if attempt.accepted:
                 break
+            relevant = self._relevant(attempt.comparisons, ctx)
             problems = summarise_problems(
                 attempt.edits,
                 runs,
-                self._relevant(attempt.comparisons, ctx),
+                relevant,
                 attempt.vetting.notes if attempt.vetting else [],
             )
+            failures = failure_excerpts(runs, relevant)
+            applied_diff = patch
         return attempts
 
     @staticmethod

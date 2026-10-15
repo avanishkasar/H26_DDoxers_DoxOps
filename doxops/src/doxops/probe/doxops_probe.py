@@ -103,6 +103,53 @@ def _crash_message(report) -> str:
     return text[-_MAX_MSG:]
 
 
+_MAX_TB_LINES = 40
+
+
+def _display_path(path: str) -> str:
+    """Repository-relative path, or ``site-packages/...`` for installed code (portable, leaks no host paths)."""
+    norm = os.path.normcase(os.path.abspath(path))
+    for site in _SITE:
+        if norm.startswith(site):
+            return "site-packages/" + Path(norm[len(site) :]).as_posix()
+    if norm.startswith(_STDLIB):
+        return "stdlib/" + Path(norm[len(_STDLIB) :]).as_posix()
+    if norm.startswith(_ROOT + os.sep):
+        return Path(os.path.relpath(norm, _ROOT)).as_posix()
+    return str(path)
+
+
+def _is_marker(line: str) -> bool:
+    """Python 3.11+ position markers (``^^^^``/``~~~~``) carry no information for a reader of the excerpt."""
+    body = line.lstrip(">E ").strip()
+    return bool(body) and not body.strip("^~")
+
+
+def _traceback(report) -> str:
+    """Compact failure traceback: per frame its location, the failing line and the error lines."""
+    out: list[str] = []
+    chain = getattr(getattr(report, "longrepr", None), "chain", None)
+    try:
+        for reprtraceback, _crash, descr in chain or []:
+            for entry in getattr(reprtraceback, "reprentries", None) or []:
+                lines = [str(ln) for ln in (getattr(entry, "lines", None) or [])]
+                loc = getattr(entry, "reprfileloc", None)
+                if loc is not None:
+                    out.append(f"{_display_path(str(loc.path))}:{loc.lineno}: {loc.message}")
+                source = [ln for ln in lines if ln.startswith(">")]
+                if not source:
+                    source = [ln for ln in lines if ln.strip() and not ln.startswith("E ") and not _is_marker(ln)][-1:]
+                out.extend(source)
+                out.extend(ln for ln in lines if ln.startswith("E "))
+            if descr:
+                out.append(str(descr))
+    except (TypeError, ValueError, AttributeError):
+        out = []
+    if not out:
+        out = (getattr(report, "longreprtext", "") or "").splitlines()
+    return "\n".join(out[-_MAX_TB_LINES:])[-_MAX_MSG:]
+
+
 def pytest_sessionstart(session):
     if _TRACE:
         threading.setprofile(_profiler)
@@ -115,9 +162,14 @@ def pytest_collection_finish(session):
 
 
 def pytest_runtest_logreport(report):
-    entry = _tests.setdefault(report.nodeid, {"outcome": "passed", "duration_s": 0.0, "message": "", "frames": []})
-    if report.failed:
+    entry = _tests.setdefault(
+        report.nodeid, {"outcome": "passed", "duration_s": 0.0, "message": "", "frames": [], "traceback": ""}
+    )
+    if report.failed and not entry["traceback"]:
+        # the first failing phase is the one whose message is kept (a teardown failing after a failed call
+        # must not replace the call's traceback with its own)
         entry["frames"] = _frames(report)
+        entry["traceback"] = _traceback(report)
     entry["duration_s"] += float(getattr(report, "duration", 0.0) or 0.0)
     if hasattr(report, "wasxfail"):
         entry["outcome"] = "xpassed" if report.passed else "xfailed"
@@ -145,6 +197,7 @@ def pytest_collectreport(report):
             "duration_s": 0.0,
             "message": _crash_message(report),
             "frames": _frames(report),
+            "traceback": _traceback(report),
         }
 
 

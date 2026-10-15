@@ -33,6 +33,7 @@ from .models import (
     Requirement,
     RuntimeCall,
     SuiteRun,
+    TestResult,
     UsageSite,
 )
 from .pypi import PyPIClient, available_versions, python_supported
@@ -51,7 +52,9 @@ Rules:
    Prefer the smallest change that removes the risk. Prefer the standard library when it fully covers the usage.
 3. Pick a version_spec whose APIs you actually use, and make it compatible with every target Python version.
 4. Code changes are minimal find/replace edits. "find" must be copied EXACTLY from the file shown (including
-   indentation) and must be unique in that file. Keep edits small: change only lines that use the old API.
+   indentation; Makefile recipe lines start with a TAB) and must be unique in that file. The "  12 | " line-number
+   gutter in the listings is not part of the file: never copy it into "find" or "replace".
+   Keep edits small: change only lines that use the old API.
 5. Do NOT edit requirements*.txt, pyproject.toml, setup.cfg or setup.py: DoxOps rewrites dependency
    declarations itself from your replacement choice.
 6. Never weaken, skip or delete tests to make them pass. Do not refactor, reformat, rename or add features.
@@ -185,15 +188,179 @@ def build_prompt(ctx: PlanContext) -> str:
     )
 
 
-def build_repair_prompt(ctx: PlanContext, previous: MigrationPlan, problems: list[str]) -> str:
-    return (
-        build_prompt(ctx)
-        + "\n\n## Your previous plan\n```json\n"
-        + previous.model_dump_json(indent=2)
-        + "\n```\n\n## What happened when DoxOps applied and tested it\n"
-        + "\n".join(f"- {p}" for p in problems)
-        + "\n\nReturn a corrected complete plan. Keep what worked; fix only what failed."
+MAX_TRACE_LINES = 25
+MAX_FAILURE_CHARS = 4000
+MAX_DIFF_CHARS = 6000
+MAX_LISTED_TESTS = 8
+_FAILED = frozenset({"failed", "error"})
+COLLECTION_SUFFIX = "::<collection>"  # node id suffix the probe gives a module that failed to import or collect
+_CHANGE_LABELS = {"new": "new failure"}
+
+
+def _tail(text: str, max_lines: int) -> str:
+    return "\n".join(text.strip("\n").splitlines()[-max_lines:])
+
+
+def _excerpt(result: TestResult | None, message: str, max_lines: int) -> str:
+    """The last lines of the probe's traceback (else of the crash message), ending with the error line."""
+    message = message.strip()
+    trace = result.traceback if result else ""
+    excerpt = _tail(trace, max_lines) if trace.strip() else _tail(message, max_lines)
+    first = message.splitlines()[0].strip() if message else ""
+    if first and first not in excerpt:
+        excerpt = f"{excerpt}\n{first}".strip("\n")
+    return excerpt
+
+
+def _collection_error(errors: list[str], nodeid: str) -> str | None:
+    """The collection error (its node id) that kept ``nodeid`` from running: its module's, else a parent directory's."""
+    path = nodeid.split("::", 1)[0]
+    best: str | None = None
+    for coll in errors:
+        where = coll.removesuffix(COLLECTION_SUFFIX).strip("/")
+        if (where in ("", ".") or path == where or path.startswith(where + "/")) and (
+            best is None or len(coll) > len(best)
+        ):
+            best = coll
+    return best
+
+
+@dataclass
+class _Excerpt:
+    title: str  # what failed, shown before the Python versions
+    body: str  # the error text
+    suffix: str = ""  # shown after the Python versions (the failure class)
+    root_cause: bool = False  # an import, collection or run error: shown before individual test failures
+    pythons: list[str] = field(default_factory=list)
+    stopped: list[str] = field(default_factory=list)  # tests that passed before and did not run because of it
+
+    def add(self, python: str, stopped: str | None = None) -> None:
+        if python not in self.pythons:
+            self.pythons.append(python)
+        if stopped and stopped not in self.stopped:
+            self.stopped.append(stopped)
+
+    def header(self) -> str:
+        text = f"### {self.title} on Python {', '.join(self.pythons)}{self.suffix}"
+        if self.stopped:
+            more = len(self.stopped) - MAX_LISTED_TESTS
+            listed = ", ".join(self.stopped[:MAX_LISTED_TESTS]) + (f" (+{more} more)" if more > 0 else "")
+            text += f"\nTests that passed before and did not run because of this: {listed}"
+        return text
+
+
+def failure_excerpts(
+    runs: list[SuiteRun],
+    comps: list[Comparison],
+    max_lines: int = MAX_TRACE_LINES,
+    max_chars: int = MAX_FAILURE_CHARS,
+) -> list[str]:
+    """For each regressed, still-failing or newly failing test: its id, failure class and traceback tail.
+
+    The text comes from the executed test run (the probe's traceback, else the crash message), so the model
+    sees the real error. A test that vanished because its module no longer imports is folded into that
+    module's collection error, so the ImportError itself is shown once instead of one empty block per test;
+    vanished tests that no collection error explains (failed install, crashed run) share one block. Identical
+    failures on several Python versions are shown once and root causes come first. ``max_chars`` bounds the
+    total across all blocks; the end of a traceback (where the error line is) is what gets kept.
+    """
+    results = {(r.python, t.nodeid): t for r in runs for t in r.tests}
+    collection_errors = {
+        r.python: [t.nodeid for t in r.tests if t.nodeid.endswith(COLLECTION_SUFFIX) and t.outcome in _FAILED]
+        for r in runs
+    }
+    run_errors = {r.python: (r.error or "").strip() for r in runs}
+    blocks: dict[tuple[str, str], _Excerpt] = {}
+
+    def block(title: str, body: str, suffix: str = "", root_cause: bool = False) -> _Excerpt:
+        return blocks.setdefault((title + suffix, body), _Excerpt(title, body, suffix, root_cause))
+
+    for comp in comps:
+        deltas = {d.nodeid: d for d in comp.deltas}
+        not_run: list[str] = []
+        for d in comp.deltas:
+            vanished = d.change == "regressed" and d.after == "absent"
+            if not vanished and not (
+                d.change in ("regressed", "still-failing") or (d.change == "new" and d.after in _FAILED)
+            ):
+                continue
+            nodeid = d.nodeid
+            coll = _collection_error(collection_errors.get(comp.python, []), nodeid) if vanished else None
+            if vanished and coll is None:
+                not_run.append(nodeid)
+                continue
+            if coll is not None:
+                nodeid = coll
+            result = results.get((comp.python, nodeid))
+            source = deltas.get(nodeid)
+            change = source.change if source else "new"
+            cls = (source.failure_class if source else None) or (result.failure_class if result else None) or ""
+            message = result.message if result and result.message else (source.after_message if source else "")
+            excerpt = _excerpt(result, message, max_lines) or f"(no error text was captured; the test is now {d.after})"
+            entry = block(
+                f"{nodeid} - {_CHANGE_LABELS.get(change, change)}",
+                excerpt,
+                f" [{cls}]" if cls else "",
+                root_cause=nodeid.endswith(COLLECTION_SUFFIX),
+            )
+            entry.add(comp.python, d.nodeid if coll is not None else None)
+        if not_run:
+            reason = _tail(run_errors.get(comp.python, ""), max_lines) or (
+                "(no error text was captured: neither an import nor a collection error explains why they did not run)"
+            )
+            entry = block(f"{len(not_run)} test(s) that passed before did not run", reason, root_cause=True)
+            for nodeid in not_run:
+                entry.add(comp.python, nodeid)
+    out: list[str] = []
+    budget = max_chars
+    ordered = sorted(blocks.values(), key=lambda b: not b.root_cause)  # stable: discovery order otherwise
+    for n, entry in enumerate(ordered):
+        header = entry.header()
+        excerpt = entry.body
+        room = budget - len(header) - 10
+        if room < 120:
+            out.append(f"({len(ordered) - n} more failing test(s) omitted to keep the prompt short)")
+            break
+        if len(excerpt) > room:
+            excerpt = "..." + excerpt[-(room - 3) :]
+        rendered = f"{header}\n```\n{excerpt}\n```"
+        budget -= len(rendered)
+        out.append(rendered)
+    return out
+
+
+def build_repair_prompt(
+    ctx: PlanContext,
+    previous: MigrationPlan,
+    problems: list[str],
+    failures: list[str] | None = None,
+    applied_diff: str = "",
+) -> str:
+    """The first prompt plus what DoxOps observed when it applied and tested the previous plan."""
+    parts = [
+        build_prompt(ctx),
+        "## Your previous plan\n```json\n" + previous.model_dump_json(indent=2) + "\n```",
+        "## What happened when DoxOps applied and tested it\n"
+        + ("\n".join(f"- {p}" for p in problems) or "- (no problem summary was recorded)"),
+    ]
+    if failures:
+        parts.append(
+            "## Errors from the test run of your previous plan (last lines of each traceback)\n" + "\n\n".join(failures)
+        )
+    if applied_diff.strip():
+        diff = applied_diff.strip("\n")
+        if len(diff) > MAX_DIFF_CHARS:
+            diff = diff[:MAX_DIFF_CHARS] + "\n... (diff truncated)"
+        parts.append(
+            "## Exact changes DoxOps applied for your previous plan (unified diff against the original files)\n"
+            f"```diff\n{diff}\n```"
+        )
+    parts.append(
+        "Return a corrected complete plan. Keep what worked; fix only what failed. The errors above come from "
+        "actually running the tests on your change: fix the cause they show. Every attempt starts again from the "
+        "ORIGINAL files listed above, so each 'find' must match the original text, not your previous change."
     )
+    return "\n\n".join(parts)
 
 
 # ------------------------------------------------------------------ vetting
@@ -275,47 +442,128 @@ def _test_only(ctx: PlanContext) -> bool:
     )
 
 
+def _line_hits(text: str, find: str) -> list[int]:
+    """Start lines where ``find`` matches line by line, ignoring each line's surrounding whitespace."""
+    want = [ln.strip() for ln in find.strip("\n").splitlines()]
+    if not want:
+        return []
+    lines = text.splitlines()
+    return [
+        i for i in range(len(lines) - len(want) + 1) if all(lines[i + k].strip() == want[k] for k in range(len(want)))
+    ]
+
+
+def _match_count(text: str, find: str) -> int:
+    return text.count(find) or len(_line_hits(text, find))
+
+
 def _tolerant_find(text: str, find: str) -> tuple[int, int] | None:
-    """Exact match first; otherwise match line-by-line ignoring surrounding whitespace (small models drift)."""
+    """Exact match first; otherwise match line-by-line ignoring surrounding whitespace (small models drift).
+
+    Leading whitespace is ignored entirely, so tabs versus spaces never prevent a match.
+    """
     if text.count(find) == 1:
         start = text.index(find)
         return start, start + len(find)
     if text.count(find) > 1:
         return None
-    want = [ln.strip() for ln in find.strip("\n").splitlines()]
-    if not want:
-        return None
-    lines = text.splitlines(keepends=True)
-    hits = []
-    for i in range(len(lines) - len(want) + 1):
-        if all(lines[i + k].strip() == want[k] for k in range(len(want))):
-            hits.append(i)
+    hits = _line_hits(text, find)
     if len(hits) != 1:
         return None
+    lines = text.splitlines(keepends=True)
+    n = len(find.strip("\n").splitlines())
     start = sum(len(ln) for ln in lines[: hits[0]])
-    end = start + sum(len(ln) for ln in lines[hits[0] : hits[0] + len(want)])
+    end = start + sum(len(ln) for ln in lines[hits[0] : hits[0] + n])
     return start, end
 
 
+_GUTTER = re.compile(r"^[ \t]*(\d+)[ \t]*\| ?")
+TAB_WIDTH = 8
+
+
+def _strip_gutter(text: str, *, strict: bool = True) -> tuple[str, int] | None:
+    """Remove the ``  12 | `` gutter that file_context() adds, when the model copied it into an edit.
+
+    Returns the text without the gutter and the line number on its first non-blank line, or None when the
+    text does not carry a gutter: some non-blank line lacks one, so a genuine ``|`` in code (``a | b``) is
+    left alone, or (``strict``) the numbers do not count up one per line the way the listing prints them.
+    Callers must still check that the first number is the line where the text sits in the file.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    numbered: list[tuple[int, int]] = []  # (index of the line in the text, number in its gutter)
+    for i, ln in enumerate(lines):
+        if not ln.strip():
+            out.append("")
+            continue
+        m = _GUTTER.match(ln)
+        if m is None:
+            return None
+        numbered.append((i, int(m.group(1))))
+        out.append(ln[m.end() :])
+    if not numbered:
+        return None
+    first_index, first = numbered[0]
+    if strict and any(number - first != i - first_index for i, number in numbered):
+        return None
+    return "\n".join(out), first
+
+
+def _content_line(text: str, span: tuple[int, int]) -> int:
+    """1-based line number of the first non-blank line inside ``text[span[0]:span[1]]``."""
+    s, e = span
+    blank = next((k for k, ln in enumerate(text[s:e].split("\n")) if ln.strip()), 0)
+    return text.count("\n", 0, s) + 1 + blank
+
+
+def _lines_found_at(texts: list[str], find: str) -> set[int]:
+    """Lines where ``find`` matches exactly once, in each of ``texts`` (the file now, and before any edit)."""
+    return {_content_line(t, span) for t in texts if (span := _tolerant_find(t, find)) is not None}
+
+
+def _leading(line: str) -> str:
+    return line[: len(line) - len(line.lstrip(" \t"))]
+
+
+def _first_indent(block: str) -> str | None:
+    return next((_leading(ln) for ln in block.splitlines() if ln.strip()), None)
+
+
+def _width(indent: str) -> int:
+    return len(indent.expandtabs(TAB_WIDTH))
+
+
+def _indent_of_width(style: str, width: int) -> str:
+    """Indentation of a visual width, written with tabs when the original block is tab-indented."""
+    if "\t" in style:
+        return "\t" * (width // TAB_WIDTH) + " " * (width % TAB_WIDTH)
+    return " " * width
+
+
 def _reindent(original: str, replacement: str) -> str:
-    """Keep the original block's indentation when the model dropped or changed it."""
-    orig_lines = original.splitlines()
-    if not orig_lines:
-        return replacement
-    base = len(orig_lines[0]) - len(orig_lines[0].lstrip())
+    """Re-base the replacement onto the original block's indentation string.
+
+    The replacement's first non-blank line takes the original's exact leading whitespace (a Makefile recipe
+    keeps its TAB even when the model wrote spaces); deeper lines keep their extra indentation on top of it.
+    """
+    orig_indent = _first_indent(original)
     rep_lines = replacement.strip("\n").splitlines()
-    if not rep_lines:
+    rep_indent = _first_indent(replacement.strip("\n"))
+    if orig_indent is None:
+        return replacement
+    if not rep_lines or rep_indent is None:
         return ""
-    rep_base = len(rep_lines[0]) - len(rep_lines[0].lstrip())
-    shift = base - rep_base
-    out = []
+    out: list[str] = []
     for ln in rep_lines:
         if not ln.strip():
             out.append("")
-        elif shift >= 0:
-            out.append(" " * shift + ln)
-        else:
-            out.append(ln[min(-shift, len(ln) - len(ln.lstrip())) :])
+            continue
+        lead = _leading(ln)
+        if lead.startswith(rep_indent):
+            out.append(orig_indent + lead[len(rep_indent) :] + ln[len(lead) :])
+        else:  # less indented than the first line (or mixed tabs/spaces): keep the relative visual width
+            width = max(0, _width(orig_indent) - (_width(rep_indent) - _width(lead)))
+            out.append(_indent_of_width(orig_indent, width) + ln[len(lead) :])
     trailing = "\n" if original.endswith("\n") else ""
     return "\n".join(out) + trailing
 
@@ -341,6 +589,7 @@ def _parses(source: str) -> bool:
 def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list[EditOutcome], bool]:
     outcomes: list[EditOutcome] = []
     touched: set[Path] = set()
+    before_edits: dict[Path, str] = {}  # gutter numbers refer to the listing, i.e. the file before any edit
     allow_tests = _test_only(ctx)
     root = tree.resolve()
     for edit in plan.edits:
@@ -374,23 +623,47 @@ def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list
                 outcomes.append(EditOutcome(file=rel, applied=False, error="file does not exist"))
                 continue
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(edit.replace, encoding="utf-8", newline="\n")
+            numbered = _strip_gutter(edit.replace)
+            new_text = numbered[0] if numbered is not None and numbered[1] == 1 else edit.replace
+            path.write_text(new_text, encoding="utf-8", newline="\n")
             touched.add(path)
             outcomes.append(EditOutcome(file=rel, applied=True, reason=edit.reason or "new file"))
             continue
         text = path.read_text(encoding="utf-8")
-        span = _tolerant_find(text, edit.find)
+        texts = list(dict.fromkeys([text, before_edits.setdefault(path, text)]))
+        find = edit.find
+        span = _tolerant_find(text, find)
+        gutter_in_find = False
+        if span is None and (numbered := _strip_gutter(find)) is not None:
+            stripped, first = numbered
+            if _match_count(text, stripped) > 1:
+                find = stripped  # reported below as ambiguous: the gutter number does not make a find unique
+            elif first in _lines_found_at(texts, stripped):
+                # the model copied the listing's line-number gutter: its numbers name the very lines it matches
+                find, gutter_in_find = stripped, True
+                span = _tolerant_find(text, find)
         if span is None:
-            count = text.count(edit.find)
+            count = _match_count(text, find)
             msg = f"find text occurs {count} times; it must be unique" if count > 1 else "find text not found in file"
             outcomes.append(EditOutcome(file=rel, applied=False, error=msg))
             continue
         s, e = span
         original = text[s:e]
-        if original == edit.find:
-            options = [_continue_indent(text, s, edit.replace), edit.replace]
-        else:
-            options = [_reindent(original, edit.replace), edit.replace]
+        replace = edit.replace
+        # strip a gutter from the replacement when the find had one, or when the replacement's numbers start at
+        # the matched line and the file's own text there does not look like one ("    1 | 2")
+        numbered = _strip_gutter(replace, strict=not gutter_in_find)
+        if numbered is not None and (
+            gutter_in_find
+            or (_strip_gutter(original, strict=False) is None and numbered[1] in _lines_found_at(texts, find))
+        ):
+            replace = numbered[0]
+        at_line_start = s == 0 or text[s - 1] == "\n"
+        orig_indent = _first_indent(original) or ""
+        if original == find and not (at_line_start and "\t" in orig_indent):
+            options = [_continue_indent(text, s, replace), replace]
+        else:  # tolerant match, or a tab-indented block: keep the file's own indentation characters
+            options = [_reindent(original, replace), replace]
         candidates = [text[:s] + r + text[e:] for r in dict.fromkeys(options)]
         if path.suffix == ".py":
             candidates.sort(key=lambda c: not _parses(c))  # stable: first parseable option wins
@@ -504,8 +777,19 @@ def summarise_problems(
                     f"Python {run.python}: import {probe.module} fails: {(probe.error or '').splitlines()[-1:]}"
                 )
     for comp in comps:
+        not_run: list[str] = []
         for d in comp.deltas:
-            if d.change in ("regressed", "still-failing"):
+            if d.change == "regressed" and d.after == "absent":
+                not_run.append(d.nodeid)  # no message of its own: the module's collection error explains it
+            elif d.change in ("regressed", "still-failing") or (d.change == "new" and d.after in _FAILED):
                 cls = f" [{d.failure_class}]" if d.failure_class else ""
-                problems.append(f"Python {comp.python}: {d.nodeid} {d.change}{cls}: {d.after_message[:300]}")
+                label = _CHANGE_LABELS.get(d.change, d.change)
+                problems.append(f"Python {comp.python}: {d.nodeid} {label}{cls}: {d.after_message[:300]}")
+        if not_run:
+            more = len(not_run) - MAX_LISTED_TESTS
+            listed = ", ".join(not_run[:MAX_LISTED_TESTS]) + (f" (+{more} more)" if more > 0 else "")
+            problems.append(
+                f"Python {comp.python}: {len(not_run)} test(s) that passed before did not run "
+                f"(their module failed to import or collect, or the run stopped): {listed}"
+            )
     return problems[:30]

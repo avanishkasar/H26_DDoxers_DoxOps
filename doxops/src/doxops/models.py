@@ -174,6 +174,7 @@ class TestResult(_Model):
     message: str = ""
     failure_class: str | None = None
     frames: list[str] = Field(default_factory=list)
+    traceback: str = ""  # compact tail of the failure traceback (frame locations, failing lines, error lines)
 
 
 class WarningRecord(_Model):

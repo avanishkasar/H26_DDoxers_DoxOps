@@ -1262,6 +1262,11 @@
           },
           "title": "Frames",
           "type": "array"
+        },
+        "traceback": {
+          "default": "",
+          "title": "Traceback",
+          "type": "string"
         }
       },
       "required": [

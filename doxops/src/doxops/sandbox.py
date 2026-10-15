@@ -221,6 +221,7 @@ class Sandbox:
                 duration_s=round(t["duration_s"], 3),
                 message=sanitize(t["message"], tree, env.purelib) or "",
                 frames=t.get("frames", []),
+                traceback=sanitize(t.get("traceback", ""), tree, env.purelib) or "",
                 failure_class=failure_class(t["message"]) if t["outcome"] in ("failed", "error") else None,
             )
             for t in data["tests"]
