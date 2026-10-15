@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import difflib
 import os
 import shutil
@@ -251,7 +252,10 @@ class Pipeline:
             tool_version=__version__,
             generated_at=datetime.now(UTC),
             target=TargetInfo(
-                source=o.target, path=self._display_path(base.tree), commit=base.commit, pythons=o.pythons
+                source=o.target,
+                path=self._display_path(base.tree) if o.keep_envs else "migrated-repo" if accepted else "-",
+                commit=base.commit,
+                pythons=o.pythons,
             ),
             model=o.model_info,
             manifest=manifest,  # type: ignore[arg-type]
@@ -271,12 +275,18 @@ class Pipeline:
 
     @staticmethod
     def _inside_function(tree: Path, file: str, line: int) -> bool:
-        """Indented lines live in a function or class body; top-level lines already ran when the module imported."""
+        """True when the line sits in a function body. Module, class-body and decorator lines run on import,
+        so the call trace cannot tell whether a test reached them and they are not counted as unreached."""
         try:
-            text = (tree / file).read_text(encoding="utf-8", errors="replace").splitlines()[line - 1]
-        except (OSError, IndexError):
+            module = ast.parse((tree / file).read_text(encoding="utf-8", errors="replace"))
+        except (OSError, SyntaxError, ValueError):
             return True
-        return text[:1] in (" ", "\t")
+        for node in ast.walk(module):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                body = node.body if isinstance(node.body, list) else [node.body]
+                if body and body[0].lineno <= line <= (node.end_lineno or node.lineno):
+                    return True
+        return False
 
     def _display_path(self, path: Path) -> str:
         """Paths inside the output folder are stored relative to it, so reports never leak host paths."""
@@ -558,22 +568,18 @@ class Pipeline:
         runtime_lines |= self._reached_after.get(ctx.dist, set()) if best else set()
         uncovered = sorted(static_lines - runtime_lines)
         unproven = bool(best and static_lines and len(uncovered) == len(static_lines))
-        older = untested_pythons(ctx.requires_python, ctx.pythons) if best else []
+        stdlib = bool(plan and plan.replacement.strategy == "stdlib")
+        older = untested_pythons(ctx.requires_python, ctx.pythons) if best and stdlib else []
         if older:
             concerns.append(
                 Fact(
                     text=f"The project declares requires-python {', '.join(ctx.requires_python)} but this migration "
-                    f"was verified only on Python {', '.join(ctx.pythons)}; Python {', '.join(older)} is untested"
-                    + (
-                        " and the replacement is a standard-library module that may not exist there "
-                        "(raise requires-python or keep a fallback)."
-                        if plan and plan.replacement.strategy == "stdlib"
-                        else "."
-                    ),
+                    f"was verified only on Python {', '.join(ctx.pythons)}; the standard-library replacement may not "
+                    f"exist on Python {', '.join(older)} (raise requires-python or keep a fallback).",
                     provenance=Provenance.OBSERVED,
                 )
             )
-            unproven = unproven or bool(plan and plan.replacement.strategy == "stdlib")
+            unproven = True
         if static_lines and uncovered:
             run_ids = [r.test_evidence for r in [*base.runs, *(best.runs if best else [])] if r.test_evidence]
             concerns.append(

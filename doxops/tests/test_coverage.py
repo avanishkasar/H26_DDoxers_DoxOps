@@ -50,3 +50,16 @@ def test_reached_sites_ignores_unrelated_calls(tmp_path: Path) -> None:
     call = RuntimeCall(module="toml", function="load", caller_file="pkg/other.py", caller_line=4, count=1)
     run = SuiteRun(label="x", python="3.12", install_ok=True, runtime_calls=[call])
     assert Pipeline._reached_sites(_ctx(tmp_path / "before"), tmp_path / "before", tmp_path / "after", [run]) == set()
+
+
+def test_inside_function_ignores_import_time_lines(tmp_path: Path) -> None:
+    (tmp_path / "m.py").write_text(
+        "import x\n"
+        "class C:\n"
+        "    @x.validator('a')\n"
+        "    def check(cls, v):\n"
+        "        return x.clean(v)\n"
+        "VALUE = x.load()\n"
+    )
+    inside = [Pipeline._inside_function(tmp_path, "m.py", n) for n in range(1, 7)]
+    assert inside == [False, False, False, False, True, False]
