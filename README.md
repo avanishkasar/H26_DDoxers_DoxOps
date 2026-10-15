@@ -304,6 +304,8 @@ cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
 .venv/bin/python -m pytest && .venv/bin/ruff check src tests
 ```
 
+`tests/test_e2e_scripted.py` runs the whole pipeline on the real LinkWatch repository with a scripted stand-in for Gemma (including a made-up package that must be rejected). It needs network access, so it only runs with `DOXOPS_E2E=1`.
+
 ## Research behind the design
 
 | Source | Insight | Where it shows up |
