@@ -19,13 +19,15 @@ DoxOps is an open-source developer tool for maintainers. Point it at a Python re
 4. **Verifies the plan**: applies it to a throwaway copy, installs it in fresh virtualenvs, and runs the tests on Python 3.12 **and** 3.13 against the original baseline. Failed plans go back to Gemma with the categorised failure for repair.
 5. **Writes a reusable Dependency Exit Capsule** per dependency (JSON + Markdown + HTML) in which every statement is labelled **OBSERVED**, **VERIFIED** (with the id of the logged, hashed command that proved it) or **AI**.
 
+A [VS Code extension](#vs-code-extension-find-and-fix-in-the-editor) puts the findings on the affected lines and applies the verified fix from a quick fix.
+
 Built during Hacktoberfest Hack Day Mumbai × ISTE KJSSE (15 October 2026) for **Track 1: Gemma 4, Dependency Resilience**. The target repository is the organizer-provided [LinkWatch](https://github.com/rishrek/LinkWatch), which this repository forks.
 
 ---
 
 ## Contents
 
-[Problem](#problem) · [Solution](#solution) · [Quick start](#quick-start) · [Usage](#usage) · [Architecture](#architecture) · [The capsule](#the-dependency-exit-capsule) · [AI model details](#ai-model-details) · [What it finds in LinkWatch](#what-doxops-finds-in-linkwatch) · [Tech stack and dependencies](#tech-stack-and-dependencies) · [Research behind the design](#research-behind-the-design) · [Known limitations](#known-limitations) · [Disclosure](#disclosure-pre-existing-work-and-ai-usage)
+[Problem](#problem) · [Solution](#solution) · [Quick start](#quick-start) · [Usage](#usage) · [VS Code extension](#vs-code-extension-find-and-fix-in-the-editor) · [Architecture](#architecture) · [The capsule](#the-dependency-exit-capsule) · [AI model details](#ai-model-details) · [What it finds in LinkWatch](#what-doxops-finds-in-linkwatch) · [Tech stack and dependencies](#tech-stack-and-dependencies) · [Research behind the design](#research-behind-the-design) · [Known limitations](#known-limitations) · [Disclosure](#disclosure-pre-existing-work-and-ai-usage)
 
 ---
 
@@ -143,6 +145,26 @@ doxops-out/<run>/
 ```
 
 `work/` (clone, virtualenvs, attempt trees) is deleted at the end unless `--keep-envs` is given. Paths to the output folder and home directory are written as `<out>` and `~`, so reports can be shared without exposing a user name.
+
+## VS Code extension: find and fix in the editor
+
+[`vscode-extension/`](vscode-extension/) is **DoxOps for VS Code**. It drives the CLI from the editor and puts the capsule where you work:
+
+- **Squiggles where the risk is**: a diagnostic on the line that declares each at-risk dependency (`requirements*.txt`, `pyproject.toml`, `setup.py`, `Pipfile`) and on every usage site, for example `DoxOps: jinja2 at risk (score 85): import jinja2 fails on Python 3.12, 3.13 [VERIFIED]`.
+- **DoxOps sidebar**: dependencies ranked by score, each with its indicators, usage sites (click to jump), Gemma's proposal, every attempt with its verdict, and the test results per Python version, all with their OBSERVED / VERIFIED / AI label.
+- **Quick fix: apply verified fix**: runs `git apply --check`, shows the replacement, status and labels in a confirm dialog, then `git apply`s the patch DoxOps proved. Only `verified` and `partially-verified` capsules can be applied (the latter with a warning listing the open concerns); a patch that is already applied is never applied twice. **Apply All** uses `patches/combined.patch` and is offered only when the combined test run regressed nothing and no conflicts were recorded.
+- **Commands**: Scan Workspace (no AI), Run with Gemma 4 (cancellable, streamed to the DoxOps output channel), Load Results Folder, Open Report (sandboxed webview), Doctor, Set Gemini API Key (VS Code SecretStorage, never logged).
+
+It spawns the CLI without a shell, writes runs to the extension's private storage instead of your workspace, and is disabled in untrusted workspaces because a run executes the project's tests.
+
+```powershell
+cd vscode-extension
+npm ci
+npm run package                                  # builds doxops-0.1.0.vsix
+code --install-extension .\doxops-0.1.0.vsix
+```
+
+Settings (CLI path, provider, model, Python versions, max dependencies, output folder) are listed in [`vscode-extension/README.md`](vscode-extension/README.md).
 
 ## Architecture
 
@@ -284,7 +306,8 @@ These come from the tool's own run, not from a hand-written list: run `doxops sc
 | Reports | `jinja2` 3 (self-contained HTML, light and dark) |
 | Sandboxing | `uv` (virtualenvs and installs), `pytest` in the target environment, `git` |
 | Model runtime | Ollama with Gemma 4 (default) or the Gemini API |
-| Quality | `pytest` unit tests, `ruff` lint and format, GitHub Actions on 3.12 and 3.13 |
+| Editor extension | TypeScript (strict), VS Code API 1.90+, `@vscode/vsce`; no runtime dependencies |
+| Quality | `pytest` unit tests, `ruff` lint and format, `node:test` for the extension, GitHub Actions on 3.12 and 3.13 plus the extension build and tests |
 
 Runtime dependencies are declared in [`doxops/pyproject.toml`](doxops/pyproject.toml). The probe scripts that run inside the target's environment use only the standard library.
 
@@ -293,6 +316,7 @@ Runtime dependencies are declared in [`doxops/pyproject.toml`](doxops/pyproject.
 - **CI gate**: `doxops scan --fail-on critical` exits with code 3 when a dependency is critically at risk.
 - **Agent Skill**: [`skills/dependency-exit-capsule/SKILL.md`](skills/dependency-exit-capsule/SKILL.md) follows the [Agent Skills](https://agentskills.io/home) format so any compatible agent can drive DoxOps.
 - **Capsule schema**: build dashboards or bots on `capsule.json`.
+- **Editor**: the [VS Code extension](#vs-code-extension-find-and-fix-in-the-editor) shows the capsule as diagnostics and applies verified patches.
 
 ### Development
 
@@ -335,13 +359,14 @@ cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
 - Verification runs on the Python versions given with `--python` (3.12 and 3.13 by default, as LinkWatch requires). Older versions a project still declares in `requires-python` are not executed; for standard-library replacements this is flagged in the capsule.
 - The runtime call trace sees calls into Python code only; calls into compiled extensions are invisible, and lines in class bodies or decorators run at import time, so they are not counted as unreached.
 - The environment is installed from the requirement files when they exist, so a second install path (for LinkWatch, `pip install .` with `pydantic>=2` from `pyproject.toml`) is reported as `MANIFEST_DRIFT` but not executed.
+- The VS Code extension is covered by unit tests and a headless harness that drives it against real DoxOps output; it needs the DoxOps CLI installed, and a run takes as long as the CLI run it starts.
 - Security vulnerabilities are out of scope for this challenge and are not scored.
 
 ## Disclosure: pre-existing work and AI usage
 
-- **Pre-existing code**: everything outside `doxops/`, `skills/`, `scripts/`, `.github/`, `.env.example`, the added `.gitignore` lines and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
-- **Written during the event**: the DoxOps package, tests, CI, Agent Skill, demo scripts and documentation.
-- **Third-party software**: click, rich, httpx, pydantic, packaging, jinja2, pytest, ruff, uv, Ollama and Gemma 4, each under its own license.
+- **Pre-existing code**: everything outside `doxops/`, `vscode-extension/`, `docs/`, `skills/`, `scripts/`, `.github/`, `.env.example`, the added `.gitignore` lines and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
+- **Written during the event**: the DoxOps package, the VS Code extension, tests, CI, Agent Skill, demo scripts and documentation.
+- **Third-party software**: click, rich, httpx, pydantic, packaging, jinja2, pytest, ruff, uv, TypeScript, @vscode/vsce, Ollama and Gemma 4, each under its own license.
 - **AI usage**: Gemma 4 is the runtime model inside DoxOps as described above. AI coding assistants were also used during development for drafting and review; the team reviewed, ran and tested the code.
 
 ## Team DDoxers
