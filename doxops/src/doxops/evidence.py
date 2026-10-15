@@ -29,6 +29,13 @@ class EvidenceLog:
     def __init__(self, out_dir: Path) -> None:
         self.dir = out_dir / "evidence"
         self.dir.mkdir(parents=True, exist_ok=True)
+        root = str(out_dir.resolve())
+        home = str(Path.home())
+        # longest first, both slash styles, so Windows and POSIX paths are rewritten alike
+        self._redactions = sorted(
+            {(root, "<out>"), (root.replace("\\", "/"), "<out>"), (home, "~"), (home.replace("\\", "/"), "~")},
+            key=lambda pair: -len(pair[0]),
+        )
         self._items: list[Evidence] = []
         self._lock = threading.Lock()
 
@@ -36,6 +43,13 @@ class EvidenceLog:
     def items(self) -> list[Evidence]:
         with self._lock:
             return list(self._items)
+
+    def redact(self, text: str) -> str:
+        """Replace the output folder and home directory so logs and reports never expose host paths."""
+        for needle, label in self._redactions:
+            if len(needle) > 1:
+                text = text.replace(needle, label)
+        return text
 
     def _next_id(self) -> str:
         return f"E{len(self._items) + 1:03d}"
@@ -87,17 +101,18 @@ class EvidenceLog:
         with self._lock:
             ev_id = self._next_id()
             log_path = self.dir / f"{ev_id}-{kind}.log"
+            shown = [self.redact(part) for part in command]
             header = (
-                f"$ {' '.join(command)}\n# cwd: {cwd}\n# python: {python or '-'}\n"
+                f"$ {' '.join(shown)}\n# cwd: {self.redact(str(cwd))}\n# python: {python or '-'}\n"
                 f"# started: {started.isoformat()}\n# exit: {exit_code}\n# duration_s: {duration:.2f}\n\n"
             )
-            body = header + output
+            body = header + self.redact(output)
             log_path.write_text(body, encoding="utf-8")
             evidence = Evidence(
                 id=ev_id,
                 kind=kind,
-                command=command,
-                cwd=str(cwd),
+                command=shown,
+                cwd=self.redact(str(cwd)),
                 python=python,
                 exit_code=exit_code,
                 timed_out=timed_out,
@@ -105,7 +120,7 @@ class EvidenceLog:
                 started_at=started,
                 log_path=log_path.relative_to(self.dir.parent).as_posix(),
                 log_sha256=hashlib.sha256(body.encode("utf-8")).hexdigest(),
-                excerpt=_excerpt(output),
+                excerpt=_excerpt(self.redact(output)),
             )
             self._items.append(evidence)
         return evidence, output

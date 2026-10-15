@@ -213,6 +213,12 @@ class Pipeline:
             if best and best.plan:
                 accepted.append((ctx, best.plan))
 
+        selected = {r.name for r in at_risk}
+        for risk in risks:  # every flagged dependency gets a capsule, even when this run skipped it
+            if risk.at_risk and risk.name not in selected:
+                ctx = self._context(risk, base, manifest, usage, commands, metadata, declared)
+                capsules.append(self._capsule(ctx, metadata.get(risk.name), [], base))
+
         combined_runs: list[SuiteRun] = []
         combined_comps: list[Comparison] = []
         combined_patch: str | None = None
@@ -224,7 +230,9 @@ class Pipeline:
             tool="doxops",
             tool_version=__version__,
             generated_at=datetime.now(UTC),
-            target=TargetInfo(source=o.target, path=str(base.tree), commit=base.commit, pythons=o.pythons),
+            target=TargetInfo(
+                source=o.target, path=self._display_path(base.tree), commit=base.commit, pythons=o.pythons
+            ),
             model=o.model_info,
             manifest=manifest,  # type: ignore[arg-type]
             baseline=base.runs,
@@ -240,6 +248,13 @@ class Pipeline:
         if not o.keep_envs:
             shutil.rmtree(self.work / "venvs", ignore_errors=True)
         return summary
+
+    def _display_path(self, path: Path) -> str:
+        """Paths inside the output folder are stored relative to it, so reports never leak host paths."""
+        try:
+            return path.resolve().relative_to(self.out).as_posix()
+        except ValueError:
+            return path.name
 
     # ------------------------------------------------------------------ per dependency
 
@@ -456,7 +471,7 @@ class Pipeline:
         plan = chosen.plan if chosen else None
         verified_ids = sorted({r.test_evidence for r in (best.runs if best else []) if r.test_evidence})
 
-        proposed = analysis = None
+        proposed = analysis = rationale = None
         steps: list[Fact] = []
         tests: list[Fact] = []
         gaps: list[Fact] = []
@@ -464,12 +479,12 @@ class Pipeline:
         if plan:
             ch = plan.replacement
             target = ch.stdlib_module if ch.strategy == "stdlib" else (ch.package or ctx.dist)
-            text = f"{ch.strategy}: {target or '-'} {ch.version_spec or ''}".strip() + f". {plan.rationale}"
             proposed = Fact(
-                text=text,
+                text=f"{ch.strategy}: {target or '-'} {ch.version_spec or ''}".strip(),
                 provenance=Provenance.VERIFIED if best else Provenance.AI,
                 evidence_ids=verified_ids,
             )
+            rationale = Fact(text=plan.rationale, provenance=Provenance.AI) if plan.rationale else None
             analysis = Fact(text=plan.analysis, provenance=Provenance.AI)
             steps = [Fact(text=s, provenance=Provenance.AI) for s in plan.migration_steps]
             tests = [Fact(text=s, provenance=Provenance.AI) for s in plan.suggested_tests]
@@ -521,7 +536,11 @@ class Pipeline:
             )
         if not attempts:
             concerns.append(
-                Fact(text="No migration was attempted (scan-only run or AI disabled).", provenance=Provenance.OBSERVED)
+                Fact(
+                    text="No migration was attempted in this run (scan-only, AI disabled, or left out by --only / "
+                    "--max-deps); re-run with `doxops run --only " + ctx.dist + "`.",
+                    provenance=Provenance.OBSERVED,
+                )
             )
         elif not best:
             concerns.append(
@@ -551,6 +570,7 @@ class Pipeline:
             usage=ctx.usage,
             runtime_usage=ctx.runtime,
             proposed_replacement=proposed,
+            rationale=rationale,
             analysis=analysis,
             migration_steps=steps,
             suggested_tests=tests,
