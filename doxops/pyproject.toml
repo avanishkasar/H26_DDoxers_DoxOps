@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "doxops"
+version = "0.1.0"
+description = "AI-assisted dependency exit planning: find at-risk Python dependencies, plan replacements with Gemma 4, verify them by running the tests, and emit a Dependency Exit Capsule."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "Team DDoxers" }]
+keywords = ["dependencies", "migration", "maintenance", "gemma", "ollama", "llm", "supply-chain"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "click>=8.2",
+    "rich>=14.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.11",
+    "packaging>=25.0",
+    "jinja2>=3.1.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4", "ruff>=0.12"]
+
+[project.scripts]
+doxops = "doxops.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/doxops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008"]
