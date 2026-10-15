@@ -113,3 +113,11 @@ def test_archived_candidate_is_blocked() -> None:
 
     v = CandidateVetting(package="old", exists_on_index=True, notes=["PyPI marks 'old' as archived."])
     assert vetting_blocks(v) == ["PyPI marks 'old' as archived."]
+
+
+def test_untested_pythons() -> None:
+    from doxops.planner import untested_pythons
+
+    assert untested_pythons([">=3.10"], ["3.12", "3.13"]) == ["3.10", "3.11"]
+    assert untested_pythons([">=3.12"], ["3.12", "3.13"]) == []
+    assert untested_pythons([], ["3.12"]) == []

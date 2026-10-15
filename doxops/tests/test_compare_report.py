@@ -30,8 +30,9 @@ def test_compare_classifies_changes() -> None:
         run("3.12", {"a": "passed", "b": "failed", "d": "passed"}),
     )
     changes = {d.nodeid: d.change for d in comp.deltas}
-    assert changes == {"a": "fixed", "b": "regressed", "c": "removed", "d": "new"}
-    assert comp.fixed == 1 and comp.regressed == 1
+    assert changes == {"a": "fixed", "b": "regressed", "c": "regressed", "d": "new"}
+    assert comp.fixed == 1 and comp.regressed == 2
+    assert next(d for d in comp.deltas if d.nodeid == "c").failure_class == "Vanished"
     assert next(d for d in comp.deltas if d.nodeid == "b").explanation.startswith("An attribute")
 
 
