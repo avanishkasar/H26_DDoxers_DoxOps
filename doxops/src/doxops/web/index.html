@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoxOps Dashboard</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#58a6ff;
+          --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#79c0ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:30px; margin:0 0 4px; } h2 { font-size:21px; margin:0 0 12px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+  label { display:block; color:var(--muted); font-size:14px; margin-bottom:4px; }
+  input, select { width:100%; background:#0b0f14; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:17px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-top:12px; }
+  .buttons { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+  button { font-size:18px; font-weight:600; border-radius:8px; padding:12px 20px; border:1px solid var(--line); cursor:pointer; color:var(--text); background:#21262d; }
+  button.primary { background:#1f6feb; border-color:#1f6feb; } button.go { background:#238636; border-color:#238636; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .status { font-weight:700; } .status.running, .status.queued { color:var(--amber); } .status.done { color:var(--green); }
+  .status.failed, .status.cancelled { color:var(--red); }
+  .error { color:var(--red); font-weight:600; min-height:1.5em; margin-top:10px; }
+  pre#log { background:#010409; border:1px solid var(--line); border-radius:8px; padding:12px; height:280px; overflow:auto; font:13px/1.45 ui-monospace, Consolas, monospace; white-space:pre-wrap; margin:0; }
+  .counts { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px; }
+  .count { background:#0b0f14; border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .count b { display:block; font-size:38px; line-height:1.1; } .count span { color:var(--muted); }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; } th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-size:14px; font-weight:600; }
+  .badge { display:inline-block; font-size:12px; font-weight:800; letter-spacing:.04em; border-radius:4px; padding:1px 6px; margin-right:6px; border:1px solid; }
+  .b-observed { color:var(--blue); border-color:var(--blue); } .b-verified { color:var(--green); border-color:var(--green); }
+  .b-ai { color:#0d1117; background:var(--amber); border-color:var(--amber); }
+  .sev-critical, .sev-high { color:var(--red); font-weight:700; } .sev-medium { color:var(--amber); } .sev-low, .sev-none { color:var(--muted); }
+  .links a { color:var(--accent); margin-right:16px; display:inline-block; } .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>DoxOps</h1>
+  <p class="sub">Find at-risk Python dependencies, plan their exit with Gemma 4, and prove it by running the tests.
+    <span class="badge b-observed">OBSERVED</span><span class="badge b-verified">VERIFIED</span><span class="badge b-ai">AI</span></p>
+
+  <section class="panel">
+    <label for="target">Repository (GitHub URL or absolute local folder)</label>
+    <input id="target" placeholder="https://github.com/owner/repo" autocomplete="off">
+    <div class="grid">
+      <div><label for="provider">Provider</label><select id="provider"><option value="ollama">ollama (local)</option><option value="gemini">gemini (API)</option></select></div>
+      <div><label for="model">Model (optional)</label><input id="model" placeholder="default"></div>
+      <div><label for="pythons">Python versions</label><input id="pythons" value="3.12, 3.13"></div>
+      <div><label for="maxdeps">Max dependencies (optional)</label><input id="maxdeps" type="number" min="1" max="100"></div>
+    </div>
+    <div class="buttons">
+      <button id="scan" class="primary">Find problems</button>
+      <button id="run" class="go">Find and fix with Gemma 4</button>
+      <button id="cancel" disabled>Cancel</button>
+    </div>
+    <div id="error" class="error" role="alert"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Run <span id="runinfo" class="muted">none yet</span> <span id="status" class="status"></span></h2>
+    <pre id="log" aria-live="polite"></pre>
+  </section>
+
+  <section class="panel" id="results" hidden>
+    <h2>Results</h2>
+    <div class="counts" id="counts"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dependency</th><th>Score</th><th>Severity</th><th>Status</th><th>Top indicator</th><th>Proposed replacement</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <p class="links" id="links"></p>
+  </section>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let currentId = null, timer = null, shownCapsuleFor = null;
+
+function el(tag, text, cls) {
+  const n = document.createElement(tag);
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  if (cls) n.className = cls;
+  return n;
+}
+function badge(prov) {
+  const p = ["observed", "verified", "ai"].includes(prov) ? prov : "ai";
+  return el("span", p.toUpperCase(), "badge b-" + p);
+}
+function fileUrl(id, rel) { return "/api/runs/" + id + "/files/" + rel.split("/").map(encodeURIComponent).join("/"); }
+
+async function api(path, body) {
+  const opts = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
+async function start(mode) {
+  $("error").textContent = "";
+  const maxDeps = $("maxdeps").value.trim();
+  const body = {
+    target: $("target").value.trim(), mode,
+    provider: $("provider").value, model: $("model").value.trim() || null,
+    pythons: $("pythons").value.split(/[\s,]+/).filter(Boolean),
+    max_deps: maxDeps ? Number(maxDeps) : null,
+  };
+  if (!body.target) { $("error").textContent = "Enter a GitHub URL or an absolute folder path."; return; }
+  try {
+    const { id } = await api("/api/runs", body);
+    currentId = id; shownCapsuleFor = null; $("results").hidden = true; $("log").textContent = "";
+    poll();
+  } catch (e) { $("error").textContent = e.message; }
+}
+
+async function poll() {
+  clearTimeout(timer);
+  if (!currentId) return;
+  try {
+    const run = await api("/api/runs/" + currentId);
+    $("runinfo").textContent = run.mode + " · " + run.target + " · ";
+    $("status").textContent = run.status;
+    $("status").className = "status " + run.status;
+    const log = $("log"), atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 30;
+    log.textContent = run.log.join("\n");
+    if (atBottom) log.scrollTop = log.scrollHeight;
+    const active = run.status === "queued" || run.status === "running";
+    $("scan").disabled = $("run").disabled = active; $("cancel").disabled = !active;
+    if (!active && run.files.includes("capsule.json") && shownCapsuleFor !== run.id) {
+      shownCapsuleFor = run.id; await showResults(run);
+    }
+    if (active) timer = setTimeout(poll, 2000);
+  } catch (e) { $("error").textContent = e.message; timer = setTimeout(poll, 4000); }
+}
+
+async function showResults(run) {
+  const cap = await api("/api/runs/" + run.id + "/capsule.json");
+  const capsules = new Map((cap.capsules || []).map((c) => [c.dependency, c]));
+  const risks = (cap.risks || []).filter((r) => r.at_risk || capsules.has(r.name)).sort((a, b) => b.score - a.score);
+  const s = run.summary || {};
+  const counts = $("counts"); counts.replaceChildren();
+  for (const [label, value] of [["at risk", s.at_risk], ["verified", s.verified], ["partially verified", s.partially_verified], ["unverified", s.unverified]]) {
+    const box = el("div", null, "count"); box.append(el("b", value ?? 0), el("span", label)); counts.append(box);
+  }
+  const rows = $("rows"); rows.replaceChildren();
+  for (const r of risks) {
+    const c = capsules.get(r.name), tr = el("tr");
+    tr.append(el("td", r.name), el("td", r.score), el("td", r.severity, "sev-" + r.severity), el("td", c ? c.status : "not attempted"));
+    const top = (r.indicators || []).slice().sort((a, b) => b.weight - a.weight)[0];
+    const tdTop = el("td"); if (top) { tdTop.append(badge(top.provenance), document.createTextNode(top.title)); } else tdTop.textContent = "-";
+    const tdRep = el("td");
+    if (c && c.proposed_replacement) tdRep.append(badge(c.proposed_replacement.provenance), document.createTextNode(c.proposed_replacement.text));
+    else tdRep.textContent = "-";
+    tr.append(tdTop, tdRep); rows.append(tr);
+  }
+  if (!risks.length) { const tr = el("tr"); const td = el("td", "No at-risk dependencies found.", "muted"); td.colSpan = 6; tr.append(td); rows.append(tr); }
+  const links = $("links"); links.replaceChildren();
+  for (const f of run.files.filter((f) => f === "report.html" || f === "REPORT.md" || f === "capsule.json" || f.startsWith("patches/"))) {
+    const a = el("a", f === "report.html" ? "Full report" : f); a.href = fileUrl(run.id, f); a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
+  }
+  $("results").hidden = false;
+}
+
+$("scan").addEventListener("click", () => start("scan"));
+$("run").addEventListener("click", () => start("run"));
+$("cancel").addEventListener("click", async () => {
+  if (!currentId) return;
+  try { await api("/api/runs/" + currentId + "/cancel", {}); poll(); } catch (e) { $("error").textContent = e.message; }
+});
+
+(async () => {
+  try {
+    const h = await api("/api/health");
+    $("provider").value = h.defaults.provider;
+    const { runs } = await api("/api/runs");
+    if (runs.length) { currentId = runs[0].id; poll(); }
+  } catch (e) { $("error").textContent = "Dashboard API not reachable: " + e.message; }
+})();
+</script>
+</body>
+</html>

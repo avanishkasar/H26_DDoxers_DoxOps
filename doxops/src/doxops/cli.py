@@ -1,4 +1,4 @@
-"""Command-line interface: ``doxops doctor | scan | run | schema | render``."""
+"""Command-line interface: ``doxops doctor | scan | run | schema | render | serve``."""
 
 from __future__ import annotations
 
@@ -275,6 +275,54 @@ def render(out_dir: Path) -> None:
     summary = RunSummary.model_validate_json((out_dir / "capsule.json").read_text(encoding="utf-8"))
     paths = write_outputs(summary, out_dir)
     console.print(f"Rendered {paths['markdown']} and {paths['html']}")
+
+
+@main.command()
+@click.option("--host", default="127.0.0.1", show_default=True, help="Address to listen on (loopback by default).")
+@click.option("--port", type=click.IntRange(0, 65535), default=8765, show_default=True)
+@click.option(
+    "--out-root",
+    type=click.Path(path_type=Path),
+    default=Path("doxops-out/web"),
+    show_default=True,
+    help="Folder that receives one sub-folder per dashboard run.",
+)
+@click.option("--open/--no-open", "open_browser", default=True, show_default=True, help="Open the browser.")
+@click.option(
+    "--allow-remote",
+    is_flag=True,
+    help="Allow a non-loopback --host. Dangerous: anyone who can reach the port can run project tests.",
+)
+def serve(host: str, port: int, out_root: Path, open_browser: bool, allow_remote: bool) -> None:
+    """Start the local web dashboard (scan or run a repository from the browser)."""
+    import threading
+    import webbrowser
+
+    from .server import is_loopback, make_server
+
+    if not is_loopback(host):
+        if not allow_remote:
+            raise click.ClickException(
+                f"refusing to listen on {host}: the dashboard runs project tests. Pass --allow-remote to override."
+            )
+        console.print(
+            f"[red]WARNING:[/] listening on {host}. Anyone who can reach this port can make DoxOps clone a "
+            "repository and execute its tests on this machine."
+        )
+    try:
+        server = make_server(host, port, out_root, allow_remote=allow_remote)
+    except OSError as exc:
+        raise click.ClickException(f"cannot listen on {host}:{port}: {exc}") from exc
+    console.print(f"DoxOps dashboard: [bold]{server.url}[/]  (runs in {out_root}; Ctrl+C to stop)")
+    if open_browser:
+        threading.Timer(0.5, webbrowser.open, args=(server.url,)).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        console.print("Stopping dashboard.")
+    finally:
+        server.manager.cancel_all()
+        server.server_close()
 
 
 if __name__ == "__main__":
