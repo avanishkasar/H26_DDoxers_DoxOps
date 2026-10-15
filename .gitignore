@@ -7,3 +7,10 @@ dist/
 .venv/
 venv/
 status.html
+
+# DoxOps
+.env
+.env.*
+!.env.example
+doxops-out/
+.ruff_cache/
