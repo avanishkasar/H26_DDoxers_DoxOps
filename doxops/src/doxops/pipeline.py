@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import os
 import shutil
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -41,6 +42,7 @@ from .planner import (
     normalize_plan,
     rewrite_manifests,
     summarise_problems,
+    untested_pythons,
     vet_candidate,
     vetting_blocks,
 )
@@ -48,9 +50,21 @@ from .pypi import PyPIClient
 from .risk import RiskInputs, assess, blamed_dist
 from .sandbox import EnvInfo, Sandbox
 from .usage import find_tool_references, scan_repository
-from .workspace import acquire, fresh_copy, unified_patch
+from .workspace import acquire, force_rmtree, fresh_copy, unified_patch
 
 Log = Callable[[str], None]
+
+
+def _cache_dir() -> Path:
+    """Per-user cache shared by runs, so --offline-index can reuse metadata fetched earlier."""
+    if env := os.environ.get("DOXOPS_CACHE_DIR"):
+        base = Path(env)
+    elif os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "doxops"
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "doxops"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
 
 
 @dataclass
@@ -89,10 +103,11 @@ class Pipeline:
         self.work.mkdir(exist_ok=True)
         self.evidence = EvidenceLog(self.out)
         self.sandbox = Sandbox(self.work, self.evidence)
-        self.pypi = PyPIClient(self.work / "pypi-cache.json", offline=opts.offline_index)
+        self.pypi = PyPIClient(_cache_dir() / "pypi-cache.json", offline=opts.offline_index)
         self._commands: dict[str, str] = {}
         self._declared: list[str] = []
         self._reached_after: dict[str, set[tuple[str, int]]] = {}
+        self._crashed: dict[str, str] = {}
 
     # ------------------------------------------------------------------ helpers
 
@@ -207,7 +222,12 @@ class Pipeline:
                 capsules.append(self._capsule(ctx, metadata.get(risk.name), [], base))
                 continue
             self.log(f"[5/6] ({idx}/{len(at_risk)}) Planning and verifying {risk.name} (score {risk.score})")
-            attempts = self._migrate(ctx, base)
+            try:
+                attempts = self._migrate(ctx, base)
+            except Exception as exc:  # keep every other capsule even if one migration crashes
+                self._crashed[risk.name] = f"{type(exc).__name__}: {exc}"
+                self.log(f"      migration crashed: {self._crashed[risk.name]}")
+                attempts = []
             capsules.append(self._capsule(ctx, metadata.get(risk.name), attempts, base))
             best = next((a for a in attempts if a.accepted and a.plan), None)
             if best and best.plan:
@@ -243,11 +263,20 @@ class Pipeline:
             combined_patch=combined_patch,
             evidence=self.evidence.items,
             llm_calls=o.llm.calls if o.llm else [],
-            limitations=self._limitations(capsules, base),
+            limitations=self._limitations(capsules, base) + self._combined_notes(combined_comps),
         )
-        if not o.keep_envs:
-            shutil.rmtree(self.work / "venvs", ignore_errors=True)
+        if not o.keep_envs:  # work/ holds clones, venvs and raw probe files: big and full of host paths
+            force_rmtree(self.work)
         return summary
+
+    @staticmethod
+    def _inside_function(tree: Path, file: str, line: int) -> bool:
+        """Indented lines live in a function or class body; top-level lines already ran when the module imported."""
+        try:
+            text = (tree / file).read_text(encoding="utf-8", errors="replace").splitlines()[line - 1]
+        except (OSError, IndexError):
+            return True
+        return text[:1] in (" ", "\t")
 
     def _display_path(self, path: Path) -> str:
         """Paths inside the output folder are stored relative to it, so reports never leak host paths."""
@@ -291,6 +320,7 @@ class Pipeline:
             pythons=self.o.pythons,
             other_dependencies=[d for d in declared if d != risk.name],
             tree=base.tree,
+            requires_python=[c.value for c in manifest.python_constraints if c.kind == "requires-python"],
         )
 
     def _relevant(self, comps: list[Comparison], ctx: PlanContext) -> list[Comparison]:
@@ -363,7 +393,7 @@ class Pipeline:
             patch_dir = self.out / "patches"
             patch_dir.mkdir(exist_ok=True)
             patch_path = patch_dir / f"{ctx.dist}-attempt{n}.patch"
-            patch_path.write_text(patch, encoding="utf-8")
+            patch_path.write_text(patch, encoding="utf-8", newline="\n")
             attempt.patch_path = patch_path.relative_to(self.out).as_posix()
             install_ok = all(r.install_ok and not r.error for r in runs)
             regressions = sum(c.regressed for c in attempt.comparisons)
@@ -453,11 +483,13 @@ class Pipeline:
         comps = [compare(by_py[r.python], r, base.module_to_dist) for r in runs if r.python in by_py]
         patch = unified_patch(base.tree, tree)
         (self.out / "patches").mkdir(exist_ok=True)
-        (self.out / "patches" / "combined.patch").write_text(patch, encoding="utf-8")
+        (self.out / "patches" / "combined.patch").write_text(patch, encoding="utf-8", newline="\n")
         migrated = self.out / "migrated-repo"
         fresh_copy(tree, migrated)
         if notes:
-            (self.out / "patches" / "combined-conflicts.txt").write_text("\n".join(notes), encoding="utf-8")
+            (self.out / "patches" / "combined-conflicts.txt").write_text(
+                "\n".join(notes), encoding="utf-8", newline="\n"
+            )
         return runs, comps, "patches/combined.patch"
 
     # ------------------------------------------------------------------ capsule assembly
@@ -508,7 +540,7 @@ class Pipeline:
                 if not e.applied and e.error:
                     concerns.append(
                         Fact(
-                            text=f"Proposed edit to {e.file} was not applied: {e.error}", provenance=Provenance.VERIFIED
+                            text=f"Proposed edit to {e.file} was not applied: {e.error}", provenance=Provenance.OBSERVED
                         )
                     )
             if chosen.vetting:
@@ -518,11 +550,30 @@ class Pipeline:
         static_lines = {
             (s.file, s.line)
             for s in ctx.usage
-            if s.kind in ("call", "attribute", "monkeypatch", "private-api") and not s.file.startswith("tests/")
+            if s.kind in ("call", "attribute", "monkeypatch", "private-api")
+            and not s.file.startswith("tests/")
+            and self._inside_function(base.tree, s.file, s.line)  # module-level lines run on import
         }
         runtime_lines = {(c.caller_file, c.caller_line) for c in ctx.runtime}
         runtime_lines |= self._reached_after.get(ctx.dist, set()) if best else set()
         uncovered = sorted(static_lines - runtime_lines)
+        unproven = bool(best and static_lines and len(uncovered) == len(static_lines))
+        older = untested_pythons(ctx.requires_python, ctx.pythons) if best else []
+        if older:
+            concerns.append(
+                Fact(
+                    text=f"The project declares requires-python {', '.join(ctx.requires_python)} but this migration "
+                    f"was verified only on Python {', '.join(ctx.pythons)}; Python {', '.join(older)} is untested"
+                    + (
+                        " and the replacement is a standard-library module that may not exist there "
+                        "(raise requires-python or keep a fallback)."
+                        if plan and plan.replacement.strategy == "stdlib"
+                        else "."
+                    ),
+                    provenance=Provenance.OBSERVED,
+                )
+            )
+            unproven = unproven or bool(plan and plan.replacement.strategy == "stdlib")
         if static_lines and uncovered:
             run_ids = [r.test_evidence for r in [*base.runs, *(best.runs if best else [])] if r.test_evidence]
             concerns.append(
@@ -534,7 +585,11 @@ class Pipeline:
                     evidence_ids=run_ids,
                 )
             )
-        if not attempts:
+        if ctx.dist in self._crashed:
+            concerns.append(
+                Fact(text=f"The migration run crashed: {self._crashed[ctx.dist]}", provenance=Provenance.OBSERVED)
+            )
+        elif not attempts:
             concerns.append(
                 Fact(
                     text="No migration was attempted in this run (scan-only, AI disabled, or left out by --only / "
@@ -547,14 +602,17 @@ class Pipeline:
                 Fact(
                     text="No attempt passed verification; the proposal remains unproven.",
                     provenance=Provenance.VERIFIED,
+                    evidence_ids=sorted({r.test_evidence for a in attempts for r in a.runs if r.test_evidence}),
                 )
             )
         if plan and plan.confidence == "low":
             concerns.append(Fact(text="The model reported low confidence in this plan.", provenance=Provenance.AI))
 
-        if not attempts:
+        if ctx.dist in self._crashed:
+            status = "failed"
+        elif not attempts:
             status = "not-attempted"
-        elif best and not self._still_blamed(ctx, best, base):
+        elif best and not unproven and not self._still_blamed(ctx, best, base):
             status = "verified"
         elif best:
             status = "partially-verified"
@@ -596,6 +654,17 @@ class Pipeline:
             for d in c.deltas
             if d.change == "still-failing" and d.nodeid in blamed
         ]
+
+    def _combined_notes(self, comps: list[Comparison]) -> list[str]:
+        notes = [
+            f"Python {c.python}: applying all accepted migrations together regressed {c.regressed} test result(s) "
+            "that passed when each migration was applied alone."
+            for c in comps
+            if c.regressed
+        ]
+        if (self.out / "patches" / "combined-conflicts.txt").is_file():
+            notes.append("Some accepted edits conflicted when combined; see patches/combined-conflicts.txt.")
+        return notes
 
     def _limitations(self, capsules: list[DependencyCapsule], base: _Baseline) -> list[str]:
         lim = [

@@ -16,7 +16,7 @@ from __future__ import annotations
 import ast
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -72,6 +72,24 @@ class PlanContext:
     pythons: list[str]
     other_dependencies: list[str]
     tree: Path
+    requires_python: list[str] = field(default_factory=list)  # e.g. [">=3.10"] from pyproject
+
+
+def untested_pythons(requires_python: list[str], tested: list[str]) -> list[str]:
+    """CPython 3.x versions the project claims to support that are older than every version DoxOps tested."""
+    try:
+        lowest = min(int(v.split(".")[1]) for v in tested)
+    except (ValueError, IndexError):
+        return []
+    older: list[str] = []
+    for minor in range(8, lowest):
+        version = f"3.{minor}"
+        try:
+            if requires_python and all(SpecifierSet(spec).contains(version) for spec in requires_python):
+                older.append(version)
+        except InvalidSpecifier:
+            return []
+    return older
 
 
 def _numbered(lines: list[str], start: int, end: int) -> str:
@@ -132,6 +150,7 @@ def build_prompt(ctx: PlanContext) -> str:
         "latest_release_date": meta.latest_release_at.date().isoformat() if meta and meta.latest_release_at else None,
         "pypi_project_status": meta.project_status if meta else None,
         "target_python_versions": ctx.pythons,
+        "project_requires_python": ctx.requires_python,
         "other_project_dependencies": ctx.other_dependencies,
         "already_installed_through_other_dependencies": transitive_packages(ctx),
         "risk_score": ctx.risk.score,
@@ -201,6 +220,9 @@ def vet_candidate(plan: MigrationPlan, ctx: PlanContext, pypi: PyPIClient) -> Ca
     package = canonicalize_name(choice.package or ctx.dist)
     meta = pypi.fetch({package: None}).get(package)
     vetting = CandidateVetting(package=package, exists_on_index=bool(meta and meta.found))
+    if meta and not meta.found and (meta.error or "").startswith("offline"):
+        vetting.notes.append(f"Offline index: could not check that '{package}' exists on PyPI.")
+        return vetting
     if not meta or not meta.found:
         vetting.notes.append(f"'{package}' does not exist on PyPI - the proposal is rejected (possible hallucination).")
         return vetting
@@ -338,6 +360,7 @@ def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list
             rel.startswith(("tests/", "test/"))
             or "/tests/" in rel
             or Path(rel).name.startswith("test_")
+            or Path(rel).name.endswith("_test.py")
             or TEST_HARNESS.search(rel)
         ) and not allow_tests:
             outcomes.append(
@@ -351,7 +374,7 @@ def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list
                 outcomes.append(EditOutcome(file=rel, applied=False, error="file does not exist"))
                 continue
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(edit.replace, encoding="utf-8")
+            path.write_text(edit.replace, encoding="utf-8", newline="\n")
             touched.add(path)
             outcomes.append(EditOutcome(file=rel, applied=True, reason=edit.reason or "new file"))
             continue
@@ -371,7 +394,7 @@ def apply_edits(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> tuple[list
         candidates = [text[:s] + r + text[e:] for r in dict.fromkeys(options)]
         if path.suffix == ".py":
             candidates.sort(key=lambda c: not _parses(c))  # stable: first parseable option wins
-        path.write_text(candidates[0], encoding="utf-8")
+        path.write_text(candidates[0], encoding="utf-8", newline="\n")
         touched.add(path)
         outcomes.append(EditOutcome(file=rel, applied=True, reason=edit.reason))
     syntax_ok = True
@@ -410,7 +433,7 @@ def rewrite_manifests(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> list
         req = tree / "requirements.txt"
         if req.is_file():
             text = req.read_text(encoding="utf-8")
-            req.write_text(text.rstrip("\n") + f"\n{new_line}\n", encoding="utf-8")
+            req.write_text(text.rstrip("\n") + f"\n{new_line}\n", encoding="utf-8", newline="\n")
             changes.append(f"requirements.txt: added `{new_line}`")
         py = tree / "pyproject.toml"
         if py.is_file():
@@ -419,7 +442,7 @@ def rewrite_manifests(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> list
             if m:
                 insert_at = m.end(1)
                 text = text[:insert_at] + f'    "{new_line}",\n' + text[insert_at:]
-                py.write_text(text, encoding="utf-8")
+                py.write_text(text, encoding="utf-8", newline="\n")
                 changes.append(f"pyproject.toml: added `{new_line}` to [project].dependencies")
         return changes
     for decl in live:
@@ -442,7 +465,7 @@ def rewrite_manifests(plan: MigrationPlan, ctx: PlanContext, tree: Path) -> list
         else:
             lines[idx] = line.replace(decl.raw, new_line, 1)
             changes.append(f"{decl.source_file}:{decl.line}: `{decl.raw}` -> `{new_line}`")
-        path.write_text("".join(lines), encoding="utf-8")
+        path.write_text("".join(lines), encoding="utf-8", newline="\n")
     return changes
 
 
