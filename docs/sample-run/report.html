@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoxOps report</title>
+<style>
+  :root { --bg:#0b0f17; --panel:#121826; --line:#243044; --text:#e6eaf2; --muted:#93a0b6;
+          --obs:#3b82f6; --ver:#22c55e; --ai:#f59e0b; --bad:#ef4444; --mid:#eab308; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f7f8fb; --panel:#ffffff; --line:#dfe4ee; --text:#151b28; --muted:#5b667a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 32px 0 12px; } h3 { font-size: 15px; margin: 18px 0 8px; }
+  .muted { color: var(--muted); } code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .kpi { font-size: 26px; font-weight: 650; }
+  table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; border: 1px solid; white-space: nowrap; }
+  .b-observed { color: var(--obs); border-color: var(--obs); } .b-verified { color: var(--ver); border-color: var(--ver); } .b-ai { color: var(--ai); border-color: var(--ai); } .b-status { color: var(--muted); border-color: var(--muted); } .b-failed { color: var(--bad); border-color: var(--bad); }
+  .sev-critical, .sev-high { color: var(--bad); } .sev-medium { color: var(--mid); } .sev-low, .sev-none { color: var(--muted); }
+  .bar { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--mid), var(--bad)); }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
+  summary { cursor: pointer; padding: 12px 14px; font-weight: 600; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  details > div { padding: 0 14px 14px; }
+  ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+  .ok { color: var(--ver); } .fail { color: var(--bad); }
+  .table-wrap { overflow-x: auto; }
+  .legend span { margin-right: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DoxOps · Dependency Exit Capsules</h1>
+  <div class="muted">Target <code>https://github.com/rishrek/LinkWatch</code> @ <code>f52f3930c8e7</code> · Python 3.12, 3.13 · generated 2026-10-15 08:37 UTC
+   · model <code>gemma4:e4b</code> via ollama</div>
+  <p class="legend muted"><span class="badge b-observed">OBSERVED</span> read from repo or PyPI
+    <span class="badge b-verified">VERIFIED</span> proven by an executed command
+    <span class="badge b-ai">AI</span> Gemma 4 output, not proven</p>
+
+  
+  
+  <div class="grid">
+    <div class="card"><div class="muted">Dependencies analysed</div><div class="kpi">15</div></div>
+    <div class="card"><div class="muted">At risk</div><div class="kpi sev-high">11</div></div>
+    <div class="card"><div class="muted">Migrations verified</div><div class="kpi ok">6 / 11</div></div>
+    <div class="card"><div class="muted">Commands executed</div><div class="kpi">181</div></div>
+  </div>
+
+  
+  <h2>Next actions</h2>
+  <div class="card"><ol><li>Apply jinja2: verified on every target Python (see capsules/jinja2.md).</li><li>Investigate nose by hand: no attempt passed verification.</li><li>Review pydantic: its tests pass, but part of the change is not proven (see open concerns in capsules/pydantic.md).</li><li>Review setuptools: its tests pass, but part of the change is not proven (see open concerns in capsules/setuptools.md).</li><li>Apply requests: verified on every target Python (see capsules/requests.md).</li><li>Apply idna: verified on every target Python (see capsules/idna.md).</li><li>Review appdirs: its tests pass, but part of the change is not proven (see open concerns in capsules/appdirs.md).</li><li>Investigate toml by hand: no attempt passed verification.</li><li>Apply certifi: verified on every target Python (see capsules/certifi.md).</li><li>Apply chardet: verified on every target Python (see capsules/chardet.md).</li><li>Apply six: verified on every target Python (see capsules/six.md).</li><li>All accepted migrations together: git apply patches/combined.patch (re-run the tests afterwards).</li></ol></div>
+  
+
+  <h2>Baseline test run (original dependencies)</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Python</th><th>Install</th><th>Passed</th><th>Failed</th><th>Warnings</th><th>Evidence</th></tr>
+    
+    <tr><td>3.12</td><td class="ok">ok</td>
+      <td>9</td><td class="fail">1</td>
+      <td>1</td><td class="mono">E004 E011</td></tr>
+    
+    <tr><td>3.13</td><td class="ok">ok</td>
+      <td>9</td><td class="fail">1</td>
+      <td>7</td><td class="mono">E005 E010</td></tr>
+    
+  </table></div>
+
+  
+  <h2>All accepted migrations applied together</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th></tr>
+    
+    <tr><td>3.12</td><td class="ok">1</td><td class="">0</td><td>0</td><td>9</td></tr>
+    
+    <tr><td>3.13</td><td class="ok">1</td><td class="">0</td><td>0</td><td>9</td></tr>
+    
+  </table><p class="muted">Patch: <code>patches/combined.patch</code> · migrated tree in <code>migrated-repo/</code></p></div>
+  
+
+  <h2>Risk ranking</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Dependency</th><th>Score</th><th></th><th>Severity</th><th>Indicators</th></tr>
+    
+    <tr><td><code>jinja2</code></td><td>85</td><td><div class="bar"><span style="width: 85%"></span></div></td>
+      <td class="sev-critical">critical</td>
+      <td><span class="badge b-verified" title="ImportError: cannot import name &#39;soft_unicode&#39; from &#39;markupsafe&#39; (site-packages/markupsafe\__init__.py)">IMPORT_FAILS</span> <span class="badge b-verified" title="tests/test_report.py::test_report_renders_all_sites: ImportError: cannot import name &#39;soft_unicode&#39; from &#39;markupsafe&#39; (site-packages/markupsafe\__init__.py)">TESTS_FAIL</span> <span class="badge b-observed" title="Exact pin blocks fixes, released 5.7 years ago.">OUTDATED_PIN</span> </td></tr>
+    
+    <tr><td><code>nose</code></td><td>85</td><td><div class="bar"><span style="width: 85%"></span></div></td>
+      <td class="sev-critical">critical</td>
+      <td><span class="badge b-verified" title="ModuleNotFoundError: No module named &#39;imp&#39;">IMPORT_FAILS</span> <span class="badge b-observed" title="Latest release 1.3.7 on 2015-06-02">STALE_PROJECT</span> <span class="badge b-verified" title="Makefile:14 `nosetests tests/`">TOOL_BROKEN</span> </td></tr>
+    
+    <tr><td><code>pydantic</code></td><td>55</td><td><div class="bar"><span style="width: 55%"></span></div></td>
+      <td class="sev-high">high</td>
+      <td><span class="badge b-verified" title="DeprecationWarning: Failing to pass a value to the &#39;type_params&#39; parameter of &#39;typing._eval_type&#39; is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.">IMPORT_DEPRECATED</span> <span class="badge b-observed" title="Exact pin blocks fixes, released 3.0 years ago.">OUTDATED_PIN</span> <span class="badge b-observed" title="pydantic is declared with different constraints: requirements.txt:5 &#39;==1.10.13&#39;, pyproject.toml:17 &#39;&gt;=2&#39;">MANIFEST_DRIFT</span> <span class="badge b-verified" title="site-packages/pydantic/typing.py:400 Failing to pass a value to the &#39;type_params&#39; parameter of &#39;typing._eval_type&#39; is deprecated, as it leads to incorrect behaviour when calling">RUNTIME_DEPRECATION</span> </td></tr>
+    
+    <tr><td><code>setuptools</code></td><td>45</td><td><div class="bar"><span style="width: 45%"></span></div></td>
+      <td class="sev-high">high</td>
+      <td><span class="badge b-observed" title="Exact pin blocks fixes, released 1.8 years ago.">OUTDATED_PIN</span> <span class="badge b-verified" title="DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html">IMPORT_DEPRECATED</span> <span class="badge b-verified" title="linkwatch/resources.py:1 pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html">RUNTIME_DEPRECATION</span> </td></tr>
+    
+    <tr><td><code>requests</code></td><td>40</td><td><div class="bar"><span style="width: 40%"></span></div></td>
+      <td class="sev-high">high</td>
+      <td><span class="badge b-observed" title="linkwatch/encoding.py:5 `requests.utils._parse_content_type_header`">PRIVATE_API</span> <span class="badge b-observed" title="linkwatch/http_patch.py:14 `requests.Session.request = _request`">MONKEYPATCH</span> <span class="badge b-observed" title="linkwatch/checker.py:15 `return session.get(url, verify=certifi.where())`. The call can hang forever, timeout handlers are unreachable, and a client with a default timeout (e.g. httpx, 5 s) changes behaviour on migration.">NO_TIMEOUT</span> <span class="badge b-observed" title="Exact pin blocks fixes, released 3.4 years ago.">OUTDATED_PIN</span> </td></tr>
+    
+    <tr><td><code>idna</code></td><td>35</td><td><div class="bar"><span style="width: 35%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="No import, runtime call, or build-tool reference found. It is still installed as a dependency of requests, so declaring it here only constrains their version (an exact pin can hold them back).">UNUSED</span> <span class="badge b-observed" title="Exact pin blocks fixes, released 8.3 years ago.">OUTDATED_PIN</span> </td></tr>
+    
+    <tr><td><code>appdirs</code></td><td>30</td><td><div class="bar"><span style="width: 30%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="Latest release 1.4.4 on 2020-05-11">STALE_PROJECT</span> <span class="badge b-observed" title="Target runs Python 3.12, 3.13">PYTHON_CLASSIFIERS_OLD</span> </td></tr>
+    
+    <tr><td><code>toml</code></td><td>30</td><td><div class="bar"><span style="width: 30%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="Latest release 0.10.2 on 2020-11-01">STALE_PROJECT</span> <span class="badge b-observed" title="Target runs Python 3.12, 3.13">PYTHON_CLASSIFIERS_OLD</span> </td></tr>
+    
+    <tr><td><code>certifi</code></td><td>20</td><td><div class="bar"><span style="width: 20%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="Only present as a transitive dependency; imported in linkwatch/checker.py">UNDECLARED</span> </td></tr>
+    
+    <tr><td><code>chardet</code></td><td>20</td><td><div class="bar"><span style="width: 20%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="Exact pin blocks fixes, released 3.2 years ago.">OUTDATED_PIN</span> </td></tr>
+    
+    <tr><td><code>six</code></td><td>20</td><td><div class="bar"><span style="width: 20%"></span></div></td>
+      <td class="sev-medium">medium</td>
+      <td><span class="badge b-observed" title="No import, runtime call, or build-tool reference found. It is still installed as a dependency of python-dateutil, so declaring it here only constrains their version (an exact pin can hold them back).">UNUSED</span> </td></tr>
+    
+    <tr><td><code>python-dateutil</code></td><td>5</td><td><div class="bar"><span style="width: 5%"></span></div></td>
+      <td class="sev-low">low</td>
+      <td><span class="badge b-observed" title="Target runs Python 3.12, 3.13">PYTHON_CLASSIFIERS_OLD</span> </td></tr>
+    
+    <tr><td><code>click</code></td><td>0</td><td><div class="bar"><span style="width: 0%"></span></div></td>
+      <td class="sev-none">none</td>
+      <td></td></tr>
+    
+    <tr><td><code>pytest</code></td><td>0</td><td><div class="bar"><span style="width: 0%"></span></div></td>
+      <td class="sev-none">none</td>
+      <td></td></tr>
+    
+    <tr><td><code>rich</code></td><td>0</td><td><div class="bar"><span style="width: 0%"></span></div></td>
+      <td class="sev-none">none</td>
+      <td></td></tr>
+    
+  </table></div>
+
+  <h2>Capsules</h2>
+  
+  <details open>
+    <summary><code>jinja2</code>
+      <span class="sev-critical">risk 85</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">upgrade: jinja2 &gt;=3.1.6, &lt;4.0.0</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>Jinja2==2.11.3</code> in <code>requirements.txt:4</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>Jinja2==2.11.3</code> in <code>pyproject.toml:16</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>2.11.3</code> (2021-01-31), latest <code>3.1.6</code> (2025-03-05), status <code>active</code>, 52 releases<br><span class="muted">A very fast and expressive template engine.</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-verified">VERIFIED</span> <b>`import jinja2` fails on Python 3.12, 3.13</b> <span class="muted">(+40)</span><br><span class="muted">ImportError: cannot import name &#39;soft_unicode&#39; from &#39;markupsafe&#39; (site-packages/markupsafe\__init__.py)</span> <code>E006, E008</code></li><li><span class="badge b-verified">VERIFIED</span> <b>1 test(s) fail because of it on Python 3.12, 3.13</b> <span class="muted">(+30)</span><br><span class="muted">tests/test_report.py::test_report_renders_all_sites: ImportError: cannot import name &#39;soft_unicode&#39; from &#39;markupsafe&#39; (site-packages/markupsafe\__init__.py)</span> <code>E010, E011</code></li><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 2.11.3 is 1 major version(s) behind 3.1.6</b> <span class="muted">(+15)</span><br><span class="muted">Exact pin blocks fixes, released 5.7 years ago.</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:3</code> from-import <strong>jinja2.Environment</strong> <code>from jinja2 import Environment, FileSystemLoader, select_autoescape</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:3</code> from-import <strong>jinja2.FileSystemLoader</strong> <code>from jinja2 import Environment, FileSystemLoader, select_autoescape</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:3</code> from-import <strong>jinja2.select_autoescape</strong> <code>from jinja2 import Environment, FileSystemLoader, select_autoescape</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:9</code> call <strong>jinja2.Environment</strong> <code>return Environment(</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:10</code> call <strong>jinja2.FileSystemLoader</strong> <code>loader=FileSystemLoader(template_dir()),</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/report.py:11</code> call <strong>jinja2.select_autoescape</strong> <code>autoescape=select_autoescape([&#34;html&#34;, &#34;j2&#34;]),</code></li>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `jinja2` is at risk because its pinned version (2.11.3) is causing `ImportError: cannot import name &#39;soft_unicode&#39; from &#39;markupsafe&#39;` on Python 3.12 and 3.13. This is likely due to incompatibilities between Jinja2 2.11.3 and newer versions of its dependency, `markupsafe`.
+
+Usage analysis shows that `jinja2` is used in `linkwatch/report.py` to create an `Environment`, load templates via `FileSystemLoader`, and set up `autoescape`.
+
+Given the risk indicators and the fact that the latest version (3.1.6) is available, the smallest change to resolve the compatibility issues is to upgrade the dependency to a version compatible with modern Python environments.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> upgrade: jinja2 &gt;=3.1.6, &lt;4.0.0 <code>E020, E021</code></p>
+      <p><span class="badge b-ai">AI</span> Upgrading `jinja2` to a recent version (e.g., 3.1.6 or newer) is the most direct way to resolve the `ImportError` related to `markupsafe` compatibility, as this is a known issue resolved in later releases. The version spec `&gt;=3.1.6, &lt;4.0.0` targets the latest stable major line while ensuring compatibility with the usage patterns observed.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update dependency declaration for jinja2 to use version spec &gt;=3.1.6, &lt;4.0.0.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">1</td><td class="">0</td><td>0</td><td>9</td><td>1 → 1</td><td><code>E021</code></td></tr><tr><td>3.13</td><td class="ok">1</td><td class="">0</td><td>0</td><td>9</td><td>7 → 7</td><td><code>E020</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 2 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/jinja2-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: No functional gaps are expected as the usage pattern (Environment creation, FileSystemLoader, select_autoescape) is standard and preserved. The upgrade addresses known version incompatibility issues.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>nose</code>
+      <span class="sev-critical">risk 85</span>
+      <span class="badge b-status">unverified</span>
+      <span class="badge b-ai">AI</span> <span class="muted">replace: pytest *</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>nose==1.3.7</code> in <code>requirements-dev.txt:2</code> (requirements)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>1.3.7</code> (2015-06-02), latest <code>1.3.7</code> (2015-06-02), status <code>active</code>, 13 releases<br><span class="muted">nose extends unittest to make testing easier</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-verified">VERIFIED</span> <b>`import nose` fails on Python 3.12, 3.13</b> <span class="muted">(+40)</span><br><span class="muted">ModuleNotFoundError: No module named &#39;imp&#39;</span> <code>E006, E008</code></li><li><span class="badge b-verified">VERIFIED</span> <b>Build tooling calls a command from nose that cannot run</b> <span class="muted">(+20)</span><br><span class="muted">Makefile:14 `nosetests tests/`</span> <code>E006, E008</code></li><li><span class="badge b-observed">OBSERVED</span> <b>No release for 11.4 years</b> <span class="muted">(+25)</span><br><span class="muted">Latest release 1.3.7 on 2015-06-02</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>Makefile:14</code> tool-command <strong>nosetests</strong> <code>nosetests tests/</code></li>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `nose` is flagged as high risk due to being unmaintained (last release 2015-06-02) and failing on modern Python versions (ModuleNotFoundError: No module named &#39;imp&#39;). It is explicitly used in `Makefile:14` via the command `nosetests tests/`.
+
+The previous attempt failed because the exact string used in the Makefile was not found. Reviewing the provided Makefile:
+```
+   1 | IMAGE ?= linkwatch
+   2 | PYTHON ?= python3.12
+   3 | 
+   4 | .PHONY: setup test test-nose docker-build docker-test
+   5 | 
+   6 | setup:
+   7 |  $(PYTHON) -m venv .venv
+   8 |  .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+   9 | 
+  10 | test:
+  11 |  python -m pytest
+  12 | 
+  13 | test-nose:
+  14 |  nosetests tests/
+  15 | 
+  16 | docker-build:
+  17 |  docker build -t $(IMAGE) .
+  18 | 
+  19 | docker-test:
+  20 |  docker run --rm $(IMAGE) pytest
+```
+The line is `  14 |  nosetests tests/`. The previous &#39;find&#39; string was likely incorrect due to whitespace or line numbering interpretation. I will use the exact content of line 14, including leading spaces, as the &#39;find&#39; string.
+
+Since `pytest` is already listed as a dependency, replacing `nose` with `pytest` is the most appropriate strategy. The usage in the Makefile needs to be updated from `nosetests tests/` to `pytest tests/` to maintain the existing test execution behavior.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-ai">AI</span> replace: pytest *</p>
+      <p><span class="badge b-ai">AI</span> Replacing `nose` with `pytest` resolves the dependency risk entirely, as `pytest` is already a dependency and is the modern standard. The usage in the Makefile must be updated to reflect the switch from `nosetests` to `pytest` to preserve behavior.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update Makefile to use `pytest` instead of `nosetests`.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code></code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code></code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 REJECTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 1 edit(s) not applied, 1 leftover use(s) of the old dependency · <code>patches/nose-attempt1.patch</code></li><li>#2 REJECTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 1 edit(s) not applied, 1 leftover use(s) of the old dependency · <code>patches/nose-attempt2.patch</code></li><li>#3 REJECTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 1 edit(s) not applied, 1 leftover use(s) of the old dependency · <code>patches/nose-attempt3.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The original `nosetests` command might have specific default behaviors (e.g., test discovery, reporting) that differ slightly from `pytest tests/`. The replacement assumes that `pytest`&#39;s default behavior aligns sufficiently with the original intent, as no specific test failure details were provided to confirm exact functional parity beyond the command execution.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> Proposed edit to Makefile was not applied: find text not found in file</li><li><span class="badge b-verified">VERIFIED</span> No attempt passed verification; the proposal remains unproven. <code>E030, E031, E040, E041, E050, E051</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>pydantic</code>
+      <span class="sev-high">risk 55</span>
+      <span class="badge b-status">partially-verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">upgrade: pydantic &gt;=2.14.1, &lt;3.0.0</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>pydantic==1.10.13</code> in <code>requirements.txt:5</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>pydantic&gt;=2</code> in <code>pyproject.toml:17</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>1.10.13</code> (2023-09-27), latest <code>2.14.1</code> (2026-10-11), status <code>active</code>, 208 releases<br><span class="muted">Data validation using Python type hints</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-verified">VERIFIED</span> <b>`import pydantic` emits a deprecation warning on Python 3.13</b> <span class="muted">(+15)</span><br><span class="muted">DeprecationWarning: Failing to pass a value to the &#39;type_params&#39; parameter of &#39;typing._eval_type&#39; is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.</span> <code>E008</code></li><li><span class="badge b-verified">VERIFIED</span> <b>6 deprecation warning(s) during tests on Python 3.13</b> <span class="muted">(+10)</span><br><span class="muted">site-packages/pydantic/typing.py:400 Failing to pass a value to the &#39;type_params&#39; parameter of &#39;typing._eval_type&#39; is deprecated, as it leads to incorrect behaviour when calling</span> <code>E010</code></li><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 1.10.13 is 1 major version(s) behind 2.14.1</b> <span class="muted">(+15)</span><br><span class="muted">Exact pin blocks fixes, released 3.0 years ago.</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Declared with conflicting constraints in different files</b> <span class="muted">(+15)</span><br><span class="muted">pydantic is declared with different constraints: requirements.txt:5 &#39;==1.10.13&#39;, pyproject.toml:17 &#39;&gt;=2&#39;</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:4</code> from-import <strong>pydantic.BaseModel</strong> <code>from pydantic import BaseModel, validator</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:4</code> from-import <strong>pydantic.validator</strong> <code>from pydantic import BaseModel, validator</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:7</code> attribute <strong>pydantic.BaseModel</strong> <code>class Site(BaseModel):</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:14</code> call <strong>pydantic.validator</strong> <code>@validator(&#34;name&#34;)</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:20</code> call <strong>pydantic.validator</strong> <code>@validator(&#34;url&#34;)</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:27</code> attribute <strong>pydantic.BaseModel</strong> <code>class Settings(BaseModel):</code></li>
+        <li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/config.py:38</code> → <code>pydantic.BaseModel.__init__</code> ×1</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>tests/test_checker.py:6</code> → <code>pydantic.BaseModel.__init__</code> ×6</li></ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `pydantic` is used in `linkwatch/config.py` for defining data models (`BaseModel`) and custom validation (`@validator`). The current pinned version `1.10.13` is outdated, and the project has conflicting declarations (`==1.10.13` vs `&gt;=2`). The risk indicators point to deprecation warnings in newer Python versions (3.13) related to `typing._eval_type`, which suggests an upgrade is necessary to address modern Python compatibility and deprecations. The usage pattern (using `BaseModel` and `@validator`) is standard for Pydantic. Since the goal is to remove risk, upgrading to the latest stable version that supports the target Python versions (3.12, 3.13) is the best approach. Pydantic V2 is the current major version, and the usage in `linkwatch/config.py` needs to be checked against V2 API changes, specifically for validators.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> upgrade: pydantic &gt;=2.14.1, &lt;3.0.0 <code>E060, E061</code></p>
+      <p><span class="badge b-ai">AI</span> Upgrading from Pydantic 1.x to 2.x is necessary to resolve the outdated pin and address deprecation warnings observed in newer Python versions. The usage in `linkwatch/config.py` relies on `BaseModel` and `@validator`. Pydantic V2 changes `@validator` to use `@field_validator` or `@model_validator`. I must update the usage in `linkwatch/config.py` to align with Pydantic V2 API while preserving behavior.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update imports in linkwatch/config.py to reflect Pydantic V2 API changes.</li><li><span class="badge b-ai">AI</span> Replace `@validator` decorators with the equivalent V2 mechanism (`@field_validator`) and adjust function signatures to match V2 expectations.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E060</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 1</td><td><code>E061</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/pydantic-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: Pydantic V2 validators receive the value directly, not as (cls, value). The original implementation used `cls` as the first argument, which is now redundant for field validation. The replacement keeps the signature compatible with V2&#39;s expectation for field validators, which typically only require `cls` or `value` depending on the specific validator type, but for simple field validation, the structure is adjusted to match V2&#39;s expected signature for `@field_validator`.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li><li><span class="badge b-verified">VERIFIED</span> 2 of 2 code sites using pydantic were not reached by the test suite before or after migration (e.g. linkwatch/config.py:14, linkwatch/config.py:20); tests cannot prove the migration there. <code>E011, E010, E060, E061</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>setuptools</code>
+      <span class="sev-high">risk 45</span>
+      <span class="badge b-status">partially-verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">replace: importlib.resources &gt;=3.7</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>setuptools==75.8.0</code> in <code>requirements.txt:9</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>setuptools==75.8.0</code> in <code>pyproject.toml:21</code> (project.dependencies)</li><li><span class="badge b-observed">OBSERVED</span> <code>setuptools&gt;=61</code> in <code>pyproject.toml:2</code> (build-system.requires)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>75.8.0</code> (2025-01-08), latest <code>84.0.0</code> (2026-08-08), status <code>active</code>, 624 releases<br><span class="muted">Most extensible Python build backend with support for C/C++ extension modules</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-verified">VERIFIED</span> <b>`import pkg_resources` emits a deprecation warning on Python 3.12, 3.13</b> <span class="muted">(+15)</span><br><span class="muted">DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html</span> <code>E006, E008</code></li><li><span class="badge b-verified">VERIFIED</span> <b>1 deprecation warning(s) during tests on Python 3.12, 3.13</b> <span class="muted">(+10)</span><br><span class="muted">linkwatch/resources.py:1 pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html</span> <code>E010, E011</code></li><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 75.8.0 is 9 major version(s) behind 84.0.0</b> <span class="muted">(+20)</span><br><span class="muted">Exact pin blocks fixes, released 1.8 years ago.</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/resources.py:1</code> import <strong>pkg_resources</strong> <code>import pkg_resources</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/resources.py:7</code> call <strong>pkg_resources.resource_filename</strong> <code>return pkg_resources.resource_filename(&#34;linkwatch&#34;, &#34;templates&#34;)</code></li>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `setuptools` is flagged due to the use of `pkg_resources`, which emits a deprecation warning on Python 3.12 and 3.13. The usage is explicit in `linkwatch/resources.py`:
+1. `import pkg_resources`
+2. `pkg_resources.resource_filename(&#34;linkwatch&#34;, &#34;templates&#34;)`
+
+The risk is tied to the API usage (`pkg_resources`), not the dependency itself being obsolete, although the pinned version is outdated. The goal is to remove the risk associated with `pkg_resources` usage.
+
+Since `pkg_resources` is used to find resources bundled within the package, the modern, recommended replacement for this functionality, especially when targeting modern Python versions, is using `importlib.resources` (or `importlib.resources.files` in Python 3.9+). This is part of the standard library.
+
+Strategy: Replace the usage of `pkg_resources` with `importlib.resources`.
+
+Target Python versions are 3.12 and 3.13. `importlib.resources` is fully available and preferred for this purpose.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> replace: importlib.resources &gt;=3.7 <code>E070, E071</code></p>
+      <p><span class="badge b-ai">AI</span> Replacing `pkg_resources` with `importlib.resources` directly addresses the `IMPORT_DEPRECATED` and `RUNTIME_DEPRECATION` risk indicators by using a standard library module designed for resource loading, which is the modern replacement for `pkg_resources` functionality.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update `linkwatch/resources.py` to use `importlib.resources` instead of `pkg_resources`.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 0</td><td><code>E070</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 6</td><td><code>E071</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/setuptools-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The original code used `pkg_resources.resource_filename` which returned a path string. The replacement uses `importlib.resources.files(...).joinpath(...).resolve()` which returns a `pathlib.Path` object. This change preserves the *behavior* of finding the resource path, but the return type changes from `str` to `pathlib.Path`. If downstream code strictly expects a string path, this might require further adjustment, but for general resource loading, `pathlib.Path` is the modern standard.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li><li><span class="badge b-verified">VERIFIED</span> 1 of 1 code sites using setuptools were not reached by the test suite before or after migration (e.g. linkwatch/resources.py:7); tests cannot prove the migration there. <code>E011, E010, E070, E071</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>requests</code>
+      <span class="sev-high">risk 40</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">upgrade: requests ==2.34.2</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>requests==2.31.0</code> in <code>requirements.txt:3</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>requests==2.31.0</code> in <code>pyproject.toml:15</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>2.31.0</code> (2023-05-22), latest <code>2.34.2</code> (2026-05-14), status <code>active</code>, 160 releases<br><span class="muted">Python HTTP for Humans.</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 2.31.0, latest is 2.34.2</b> <span class="muted">(+5)</span><br><span class="muted">Exact pin blocks fixes, released 3.4 years ago.</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Uses private API that can change without notice</b> <span class="muted">(+15)</span><br><span class="muted">linkwatch/encoding.py:5 `requests.utils._parse_content_type_header`</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Project monkeypatches this library globally</b> <span class="muted">(+10)</span><br><span class="muted">linkwatch/http_patch.py:14 `requests.Session.request = _request`</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Network calls without a timeout</b> <span class="muted">(+10)</span><br><span class="muted">linkwatch/checker.py:15 `return session.get(url, verify=certifi.where())`. The call can hang forever, timeout handlers are unreachable, and a client with a default timeout (e.g. httpx, 5 s) changes behaviour on migration.</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:5</code> import <strong>requests</strong> <code>import requests</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:6</code> from-import <strong>requests.Session</strong> <code>from requests import Session as S</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:13</code> call <strong>requests.Session</strong> <code>session = S()</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:15</code> no-timeout <strong>requests.Session.get</strong> <code>return session.get(url, verify=certifi.where())</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:35</code> attribute <strong>requests.exceptions.ConnectionError</strong> <code>except requests.exceptions.ConnectionError:</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:38</code> attribute <strong>requests.exceptions.Timeout</strong> <code>except requests.exceptions.Timeout:</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/encoding.py:5</code> private-api <strong>requests.utils._parse_content_type_header</strong> <code>from requests.utils import _parse_content_type_header</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/encoding.py:11</code> call <strong>requests.utils._parse_content_type_header</strong> <code>_, params = _parse_content_type_header(resp.headers.get(&#34;Content-Type&#34;, &#34;&#34;))</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/http_patch.py:1</code> import <strong>requests</strong> <code>import requests</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/http_patch.py:5</code> attribute <strong>requests.Session.request</strong> <code>_original_request = requests.Session.request</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/http_patch.py:14</code> monkeypatch <strong>requests.Session.request</strong> <code>requests.Session.request = _request</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/http_patch.py:14</code> attribute <strong>requests.Session.request</strong> <code>requests.Session.request = _request</code></li>
+        <li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/checker.py:13</code> → <code>requests.Session.__init__</code> ×7</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/checker.py:15</code> → <code>requests.Session.get</code> ×7</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/checker.py:17</code> → <code>requests.Session.close</code> ×7</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/checker.py:43</code> → <code>requests.Response.ok</code> ×5</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/encoding.py:11</code> → <code>requests._parse_content_type_header</code> ×5</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/encoding.py:15</code> → <code>requests.Response.content</code> ×2</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/encoding.py:20</code> → <code>requests.Response.content</code> ×5</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/encoding.py:22</code> → <code>requests.Response.content</code> ×5</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/http_patch.py:11</code> → <code>requests.Session.request</code> ×7</li><li><span class="badge b-verified">VERIFIED</span> runtime <code>tests/test_checker.py:46</code> → <code>requests.Response.text</code> ×1</li></ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The previous plan to replace `requests` with `httpx` failed catastrophically, resulting in all tests vanishing across both Python 3.12 and 3.13. This indicates a fundamental incompatibility or a severe behavioral change that was not correctly mapped, especially concerning session management, exception handling, or the replacement of the private API call.
+
+Reviewing the usage:
+1.  **`linkwatch/checker.py`**: Uses `requests.Session` and `session.get(url, verify=certifi.where())`. The failure suggests that the replacement for `Session` (likely `httpx.Client` or `httpx.Session`) did not correctly replicate the behavior of `requests.Session.get` or the exception catching (`ConnectionError`, `Timeout`).
+2.  **`linkwatch/encoding.py`**: Uses `requests.utils._parse_content_type_header`. The replacement with `urllib.parse.parse_qs` might have failed because the structure of the parsed parameters did not match what the original code expected, or the replacement itself introduced an error.
+3.  **`linkwatch/http_patch.py`**: Monkeypatching `requests.Session.request` is highly brittle. If we switch to `httpx`, this entire module becomes obsolete, as `httpx` uses a different internal structure, and the monkeypatching pattern is fundamentally tied to the `requests` API.
+
+**Re-evaluation**: The risk indicators are: 1. Outdated Pin (Fixable by upgrade), 2. Private API (Fixable by replacement/upgrade), 3. Monkeypatching (Fixable by replacement), 4. No Timeout (Fixable by upgrade/configuration).
+
+Since the replacement strategy failed completely, the safest immediate step is to **Upgrade** the dependency to the latest version (`2.34.2`) while keeping the API usage as close as possible. This addresses the &#39;Outdated Pin&#39; risk and might resolve underlying compatibility issues that caused the test failures, while allowing us to address the private API and monkeypatching risks in a subsequent, more targeted refactoring phase, or by accepting the risk of the private API if upgrading resolves the immediate breakage.
+
+**Strategy Selection**: Upgrade.
+
+**Version Spec**: `2.34.2` (The latest version observed).
+
+**Implementation Plan**: Only update the version pin. No code changes are required if the API remains stable between 2.31.0 and 2.34.2, which is the minimal change.
+
+**Compatibility Gaps**: None expected, as we are only updating the version pin and assuming API stability for the used methods (`Session.get`, `Session.request`, `requests.exceptions.*`, `requests.utils._parse_content_type_header`). The risk of using private APIs and monkeypatching remains, but this is the smallest change to stop the immediate test failure cascade.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> upgrade: requests ==2.34.2 <code>E090, E091</code></p>
+      <p><span class="badge b-ai">AI</span> The previous &#39;replace&#39; strategy with &#39;httpx&#39; caused total test failure, indicating a severe behavioral mismatch. The smallest change to mitigate the immediate risk (Outdated Pin) while preserving existing functionality is to upgrade the dependency to the latest pinned version, `2.34.2`. This keeps the existing API usage intact, avoiding further breakage, and addresses the &#39;Outdated Pin&#39; risk indicator.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update dependency declaration from `requests==2.31.0` to `requests==2.34.2`.</li></ol>
+      <h3>Suggested tests</h3><ul><li><span class="badge b-ai">AI</span> Verify all existing tests pass with requests==2.34.2.</li></ul>
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E091</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E090</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 REJECTED: install failed, 0 fixed, 18 regressed across 2 Python version(s), 0 edit(s) not applied, 12 leftover use(s) of the old dependency · <code>patches/requests-attempt1.patch</code></li><li>#2 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/requests-attempt2.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The risks related to using private APIs (`requests.utils._parse_content_type_header`) and monkeypatching (`requests.Session.request`) remain, as this strategy does not address them. The &#39;No Timeout&#39; risk also remains.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li><li><span class="badge b-verified">VERIFIED</span> 2 of 4 code sites using requests were not reached by the test suite before or after migration (e.g. linkwatch/checker.py:35, linkwatch/checker.py:38); tests cannot prove the migration there. <code>E011, E010, E091, E090</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>idna</code>
+      <span class="sev-medium">risk 35</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">remove: idna</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>idna==2.7</code> in <code>requirements.txt:10</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>idna==2.7</code> in <code>pyproject.toml:22</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>2.7</code> (2018-06-11), latest <code>3.20</code> (2026-09-17), status <code>active</code>, 42 releases<br><span class="muted">Internationalized Domain Names in Applications (IDNA)</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 2.7 is 1 major version(s) behind 3.20</b> <span class="muted">(+15)</span><br><span class="muted">Exact pin blocks fixes, released 8.3 years ago.</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Declared but never imported or invoked</b> <span class="muted">(+20)</span><br><span class="muted">No import, runtime call, or build-tool reference found. It is still installed as a dependency of requests, so declaring it here only constrains their version (an exact pin can hold them back).</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `idna` is declared in `requirements.txt` and `pyproject.toml` with a pinned version `2.7`. The risk indicators show that this version is outdated, and crucially, static analysis and runtime tracing show that `idna` is never directly imported or invoked by the project code. Furthermore, the facts state that `idna` is already installed as a dependency of `requests` (which is in `other_project_dependencies`). Since the package is unused directly and is already pulled in by another dependency (`requests`), the safest and smallest change is to remove the explicit declaration to allow `requests` to manage the version, thus removing the outdated pin.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> remove: idna <code>E100, E101</code></p>
+      <p><span class="badge b-ai">AI</span> The dependency `idna` is unused directly by the project code. It is already transitively installed via `requests`. Removing the explicit declaration (`idna==2.7`) allows the dependency resolver to use the version dictated by `requests` (or its own constraints), resolving the outdated pin risk without introducing functional changes or breaking existing transitive dependencies.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Remove &#39;idna==2.7&#39; from requirements.txt:10</li><li><span class="badge b-ai">AI</span> Remove &#39;idna==2.7&#39; from pyproject.toml:22</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E101</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E100</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/idna-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li class="muted">None observed in executed tests.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>appdirs</code>
+      <span class="sev-medium">risk 30</span>
+      <span class="badge b-status">partially-verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">replace: platformdirs &gt;=4.2.0</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>appdirs==1.4.4</code> in <code>requirements.txt:2</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>appdirs==1.4.4</code> in <code>pyproject.toml:14</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>1.4.4</code> (2020-05-11), latest <code>1.4.4</code> (2020-05-11), status <code>active</code>, 8 releases<br><span class="muted">A small Python module for determining appropriate platform-specific dirs, e.g. a &#34;user data dir&#34;.</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>No release for 6.4 years</b> <span class="muted">(+25)</span><br><span class="muted">Latest release 1.4.4 on 2020-05-11</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Latest release only advertises Python up to 3.8</b> <span class="muted">(+5)</span><br><span class="muted">Target runs Python 3.12, 3.13</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/cache.py:4</code> from-import <strong>appdirs.user_cache_dir</strong> <code>from appdirs import user_cache_dir</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/cache.py:10</code> call <strong>appdirs.user_cache_dir</strong> <code>path = os.environ.get(&#34;LINKWATCH_CACHE_DIR&#34;) or user_cache_dir(&#34;linkwatch&#34;)</code></li>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `appdirs` is flagged as at-risk due to being unmaintained (last release 2020-05-11) and not supporting modern Python versions (target 3.12, 3.13). The usage in `linkwatch/cache.py` is to determine a cross-platform application cache directory using `user_cache_dir(&#34;linkwatch&#34;)`.
+
+I need to find a replacement for `appdirs.user_cache_dir` that works across Python 3.12/3.13 and provides the same functionality (determining a standard location for application data). The standard library module `pathlib` combined with `os.path.expanduser` or platform-specific logic is often used, but for cross-platform application data directories, the `platformdirs` library is the modern, maintained successor to `appdirs`.
+
+However, the rules prioritize the smallest change, and if the standard library covers it, that is preferred. Determining a user cache directory is inherently platform-dependent (e.g., `~/.cache/appname` on Linux, `%LOCALAPPDATA%` on Windows). While `pathlib` is powerful, it doesn&#39;t abstract this cross-platform logic as cleanly as `appdirs`/`platformdirs` did. Since `platformdirs` is the direct, maintained replacement for `appdirs`, and it is a minimal change, I will choose to replace it with `platformdirs`.
+
+I must update the import and the usage call in `linkwatch/cache.py`.
+
+Strategy: Replace.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> replace: platformdirs &gt;=4.2.0 <code>E110, E111</code></p>
+      <p><span class="badge b-ai">AI</span> Replacing `appdirs` with `platformdirs` is the most direct and safest migration path, as `platformdirs` is the actively maintained successor designed to provide the exact same functionality (cross-platform application directory detection) while supporting modern Python versions.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update dependency declaration (handled by DoxOps, not shown in code edits).</li><li><span class="badge b-ai">AI</span> Update imports and usage in `linkwatch/cache.py`.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E110</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E111</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/appdirs-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The API signature for `user_cache_dir` is expected to remain identical between `appdirs` and `platformdirs` for this specific usage (`user_cache_dir(&#34;linkwatch&#34;)`). If `platformdirs` introduces subtle changes in default behavior (e.g., regarding directory creation or specific OS conventions) that differ from `appdirs` 1.4.4, the behavior might shift, but the explicit usage shown relies only on the function call.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li><li><span class="badge b-verified">VERIFIED</span> 1 of 1 code sites using appdirs were not reached by the test suite before or after migration (e.g. linkwatch/cache.py:10); tests cannot prove the migration there. <code>E011, E010, E110, E111</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>toml</code>
+      <span class="sev-medium">risk 30</span>
+      <span class="badge b-status">unverified</span>
+      <span class="badge b-ai">AI</span> <span class="muted">replace: tomli &gt;=2.0.1</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>toml==0.10.2</code> in <code>requirements.txt:1</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>toml==0.10.2</code> in <code>pyproject.toml:13</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>0.10.2</code> (2020-11-01), latest <code>0.10.2</code> (2020-11-01), status <code>active</code>, 16 releases<br><span class="muted">Python Library for Tom&#39;s Obvious, Minimal Language</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>No release for 6.0 years</b> <span class="muted">(+25)</span><br><span class="muted">Latest release 0.10.2 on 2020-11-01</span></li><li><span class="badge b-observed">OBSERVED</span> <b>Latest release only advertises Python up to 3.9</b> <span class="muted">(+5)</span><br><span class="muted">Target runs Python 3.12, 3.13</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:3</code> import <strong>toml</strong> <code>import toml</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/config.py:37</code> call <strong>toml.load</strong> <code>data = toml.load(path)</code></li>
+        <li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/config.py:37</code> → <code>toml.load</code> ×1</li></ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The previous attempt to replace `toml` with `tomli` failed because `tomli.load(path)` expects a file-like object, but the usage passes a string path, leading to an `AttributeError: &#39;str&#39; object has no attribute &#39;read&#39;`. The original `toml.load(path)` accepted a string path. Since the goal is to preserve behavior exactly, we must find a replacement that accepts a file path string for loading TOML data. The `toml` package itself is stale, but if we must maintain the exact API signature (`load(path: str)`), we should look for a modern replacement that supports this, or use a strategy that wraps the file reading. Given the constraints, the most direct fix is to use a library that supports path loading, or manually implement the file reading around a parser. Since `tomli` is a parser, we can use it by manually opening the file, which is a minimal change that preserves the behavior.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-ai">AI</span> replace: tomli &gt;=2.0.1</p>
+      <p><span class="badge b-ai">AI</span> The original dependency `toml` is stale. The replacement `tomli` is modern. The failure occurred because `tomli.load()` expects a file handle, not a path string. To preserve the exact behavior of `toml.load(path)`, we must manually open the file using standard Python I/O and pass the resulting file handle to `tomli.load()`. This keeps the dependency modern while fixing the API mismatch.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> linkwatch/config.py:3: Change `import toml` to `import tomli`.</li><li><span class="badge b-ai">AI</span> linkwatch/config.py:37: Change `data = toml.load(path)` to use `tomli.load(open(path, &#39;r&#39;))` to maintain path-string input behavior.</li></ol>
+      <h3>Suggested tests</h3><ul><li><span class="badge b-ai">AI</span> Ensure tests using `test_sites_file_loads` pass on Python 3.12 and 3.13 after applying the change.</li></ul>
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="fail">1</td><td>1</td><td>8</td><td>1 → 1</td><td><code></code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="fail">1</td><td>1</td><td>8</td><td>7 → 7</td><td><code></code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 REJECTED: install ok, 0 fixed, 2 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/toml-attempt1.patch</code></li><li>#2 REJECTED: install ok, 0 fixed, 2 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/toml-attempt2.patch</code></li><li>#3 REJECTED: install ok, 0 fixed, 2 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/toml-attempt3.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The original `toml.load(path)` handled file closing implicitly or relied on its internal implementation. The replacement `tomli.load(open(path, &#39;r&#39;))` requires explicit file handling. We must ensure that the file handle opened by `open(path, &#39;r&#39;)` is closed after `tomli.load()` completes. Since `tomli.load()` consumes the stream, we must wrap the call in a `with` statement to guarantee resource cleanup.</li><li><span class="badge b-verified">VERIFIED</span> Python 3.12: tests/test_config.py::test_sites_file_loads passes before but fails after migration [TypeError] A call signature changed: arguments were added, removed, renamed, or reordered. TypeError: bytes object expected; got str <code>E141</code></li><li><span class="badge b-verified">VERIFIED</span> Python 3.13: tests/test_config.py::test_sites_file_loads passes before but fails after migration [TypeError] A call signature changed: arguments were added, removed, renamed, or reordered. TypeError: bytes object expected; got str <code>E140</code></li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-verified">VERIFIED</span> No attempt passed verification; the proposal remains unproven. <code>E120, E121, E130, E131, E140, E141</code></li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>certifi</code>
+      <span class="sev-medium">risk 20</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">declare: certifi &gt;=2026.7.22</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> Not declared anywhere: only installed as a transitive dependency.</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>unpinned</code>, latest <code>2026.7.22</code> (2026-07-22), status <code>active</code>, 75 releases<br><span class="muted">Python package for providing Mozilla&#39;s CA Bundle.</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>Imported but never declared</b> <span class="muted">(+20)</span><br><span class="muted">Only present as a transitive dependency; imported in linkwatch/checker.py</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:4</code> import <strong>certifi</strong> <code>import certifi</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/checker.py:15</code> call <strong>certifi.where</strong> <code>return session.get(url, verify=certifi.where())</code></li>
+        <li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/checker.py:15</code> → <code>certifi.where</code> ×7</li></ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `certifi` is imported in `linkwatch/checker.py` and used to provide the path to the CA bundle via `certifi.where()`. This is used in `fetch(url)` to configure `requests.Session` for secure connections. Since `requests` is already a dependency, and `requests` often relies on or bundles certificate handling, the safest and smallest change is to check if `requests` itself can be configured to use the system&#39;s default CA bundle or if there is a standard way to achieve this without explicitly calling `certifi.where()`. However, `certifi.where()` is the explicit way to get the path to the CA bundle that `requests` (and underlying libraries like `urllib3`) often use when they need a specific bundle. Given the risk is &#39;UNDECLARED&#39; and the usage is specific, declaring it is the minimal change to resolve the risk while preserving behavior. Since `requests` is present, and `certifi` is often used alongside it, declaring it is appropriate. The version specifier must be compatible with Python 3.12 and 3.13. I will choose the latest version available, as the risk is about undeclaration, not functionality.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> declare: certifi &gt;=2026.7.22 <code>E150, E151</code></p>
+      <p><span class="badge b-ai">AI</span> The dependency `certifi` is used but not declared. Declaring it with a version specifier compatible with the target Python versions resolves the &#39;UNDECLARED&#39; risk indicator with the smallest change, preserving the exact behavior of using `certifi.where()` for SSL verification.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update dependency declaration for certifi (outside scope of file edits, handled by dependency management system based on this plan).</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E151</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E150</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/certifi-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li class="muted">None observed in executed tests.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>chardet</code>
+      <span class="sev-medium">risk 20</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">replace: charset-normalizer &gt;=3.5.2, &lt;4.0.0</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>chardet==5.2.0</code> in <code>requirements.txt:8</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>chardet==5.2.0</code> in <code>pyproject.toml:20</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>5.2.0</code> (2023-08-01), latest <code>7.6.0</code> (2026-08-14), status <code>active</code>, 31 releases<br><span class="muted">Universal character encoding detector</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>Pinned 5.2.0 is 2 major version(s) behind 7.6.0</b> <span class="muted">(+20)</span><br><span class="muted">Exact pin blocks fixes, released 3.2 years ago.</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/encoding.py:4</code> import <strong>chardet</strong> <code>import chardet</code></li><li><span class="badge b-observed">OBSERVED</span> <code>linkwatch/encoding.py:15</code> call <strong>chardet.detect</strong> <code>guess = chardet.detect(resp.content)</code></li>
+        <li><span class="badge b-verified">VERIFIED</span> runtime <code>linkwatch/encoding.py:15</code> → <code>chardet.detect</code> ×2</li></ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency `chardet` is used in `linkwatch/encoding.py` to detect the encoding of response content via `chardet.detect(resp.content)`. The latest version is 7.6.0, and the current pinned version is 5.2.0. The risk is due to the outdated pin. The functionality of `chardet` (encoding detection) is already provided by `charset-normalizer`, which is installed as a dependency of `requests` (version 3.5.2). Since `charset-normalizer` is present and performs the same function, replacing `chardet` with `charset-normalizer` is the smallest change that removes the risk and leverages an existing dependency.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> replace: charset-normalizer &gt;=3.5.2, &lt;4.0.0 <code>E160, E161</code></p>
+      <p><span class="badge b-ai">AI</span> Replacing `chardet` with `charset-normalizer` leverages an already installed dependency (`charset-normalizer 3.5.2` required by `requests`) that provides the exact same functionality (`detect` method). This minimizes changes and removes the outdated dependency pin.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Update dependency declaration (handled by DoxOps, not shown in code edits).</li><li><span class="badge b-ai">AI</span> Modify `linkwatch/encoding.py` to use `charset_normalizer` instead of `chardet`.</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E160</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E161</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/chardet-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li><span class="badge b-ai">AI</span> Model expects: The API call `chardet.detect(content)` returns a dictionary-like object containing &#39;encoding&#39;. The replacement `charset_normalizer.detect(content)` returns a `CharsetDetector` object. We must ensure that accessing the encoding from the result matches the old behavior. Assuming `charset_normalizer.detect(content)` returns an object from which the encoding can be extracted similarly to how `chardet` did, or that the replacement API is functionally equivalent for this use case. If the return structure differs, the line `return guess[&#34;encoding&#34;] or &#34;utf-8&#34;` might need adjustment, but based on the minimal change principle, we assume the structure allows for direct access or that the replacement library&#39;s usage pattern is similar enough to maintain behavior.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li></ul>
+    </div>
+  </details>
+  
+  <details >
+    <summary><code>six</code>
+      <span class="sev-medium">risk 20</span>
+      <span class="badge b-verified">verified</span>
+      <span class="badge b-verified">VERIFIED</span> <span class="muted">remove: six</span>
+    </summary>
+    <div>
+      <h3>Dependency details</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <code>six</code> in <code>requirements.txt:7</code> (requirements)</li><li><span class="badge b-observed">OBSERVED</span> <code>six</code> in <code>pyproject.toml:19</code> (project.dependencies)</li>
+        <li><span class="badge b-observed">OBSERVED</span> PyPI: pinned <code>unpinned</code>, latest <code>1.17.0</code> (2024-12-04), status <code>active</code>, 29 releases<br><span class="muted">Python 2 and 3 compatibility utilities</span></li></ul>
+      <h3>Risk indicators</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> <b>Declared but never imported or invoked</b> <span class="muted">(+20)</span><br><span class="muted">No import, runtime call, or build-tool reference found. It is still installed as a dependency of python-dateutil, so declaring it here only constrains their version (an exact pin can hold them back).</span></li></ul>
+      <h3>Usage locations</h3>
+      <ul>
+        </ul>
+      <h3>Analysis</h3><p><span class="badge b-ai">AI</span> The dependency &#39;six&#39; is declared in `requirements.txt` and `pyproject.toml`. However, static analysis and runtime tracing show no direct usage of &#39;six&#39; in the codebase. The risk indicator confirms it is &#39;Declared but never imported or invoked&#39;. Furthermore, &#39;six&#39; is already installed as a dependency of &#39;python-dateutil&#39; (which is listed in `other_project_dependencies`). Since it is unused and already transitively installed, the safest and smallest change is to remove the explicit declaration to reduce unnecessary constraints and potential conflicts.</p>
+      <h3>Proposed replacement</h3>
+      <p><span class="badge b-verified">VERIFIED</span> remove: six <code>E170, E171</code></p>
+      <p><span class="badge b-ai">AI</span> The dependency &#39;six&#39; is unused in the codebase and is already present as a transitive dependency of &#39;python-dateutil&#39;. Removing the explicit declaration from dependency files is the minimal change to eliminate the risk associated with an unused, declared dependency.</p>
+      <h3>Migration steps</h3><ol><li><span class="badge b-ai">AI</span> Remove &#39;six&#39; from requirements.txt</li><li><span class="badge b-ai">AI</span> Remove &#39;six&#39; from pyproject.toml</li></ol>
+      
+      <h3>Executed test results</h3>
+      <div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th><th>Evidence</th></tr>
+        <tr><td>3.12</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>1 → 1</td><td><code>E171</code></td></tr><tr><td>3.13</td><td class="ok">0</td><td class="">0</td><td>1</td><td>9</td><td>7 → 7</td><td><code>E170</code></td></tr>
+      </table></div>
+      <h3>Attempts</h3>
+      <ul><li>#1 ACCEPTED: install ok, 0 fixed, 0 regressed across 2 Python version(s), 0 edit(s) not applied · <code>patches/six-attempt1.patch</code></li></ul>
+      <h3>Compatibility gaps</h3>
+      <ul><li class="muted">None observed in executed tests.</li></ul>
+      <h3>Open concerns and limitations</h3>
+      <ul><li><span class="badge b-observed">OBSERVED</span> The project declares requires-python &gt;=3.10 but this migration was verified only on Python 3.12, 3.13; Python 3.10, 3.11 is untested.</li></ul>
+    </div>
+  </details>
+  
+
+  
+  <h2>Dependency inventory</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Package</th><th>py3.12</th><th>py3.13</th><th>Kind</th><th>Required by</th></tr>
+    
+    <tr><td><code>appdirs</code></td><td>1.4.4</td><td>1.4.4</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>certifi</code></td><td>2026.7.22</td><td>2026.7.22</td>
+      <td>transitive</td><td>requests</td></tr>
+    
+    <tr><td><code>chardet</code></td><td>5.2.0</td><td>5.2.0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>charset-normalizer</code></td><td>3.5.2</td><td>3.5.2</td>
+      <td>transitive</td><td>requests</td></tr>
+    
+    <tr><td><code>click</code></td><td>8.5.0</td><td>8.5.0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>colorama</code></td><td>0.4.6</td><td>0.4.6</td>
+      <td>transitive</td><td>pytest</td></tr>
+    
+    <tr><td><code>idna</code></td><td>2.7</td><td>2.7</td>
+      <td>direct</td><td>requests</td></tr>
+    
+    <tr><td><code>iniconfig</code></td><td>2.3.1</td><td>2.3.1</td>
+      <td>transitive</td><td>pytest</td></tr>
+    
+    <tr><td><code>jinja2</code></td><td>2.11.3</td><td>2.11.3</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>markdown-it-py</code></td><td>4.2.0</td><td>4.2.0</td>
+      <td>transitive</td><td>rich</td></tr>
+    
+    <tr><td><code>markupsafe</code></td><td>3.0.4</td><td>3.0.4</td>
+      <td>transitive</td><td>jinja2</td></tr>
+    
+    <tr><td><code>mdurl</code></td><td>0.1.2</td><td>0.1.2</td>
+      <td>transitive</td><td>markdown-it-py</td></tr>
+    
+    <tr><td><code>nose</code></td><td>1.3.7</td><td>1.3.7</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>packaging</code></td><td>26.3</td><td>26.3</td>
+      <td>transitive</td><td>pytest</td></tr>
+    
+    <tr><td><code>pluggy</code></td><td>1.6.0</td><td>1.6.0</td>
+      <td>transitive</td><td>pytest</td></tr>
+    
+    <tr><td><code>pydantic</code></td><td>1.10.13</td><td>1.10.13</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>pygments</code></td><td>2.21.0</td><td>2.21.0</td>
+      <td>transitive</td><td>pytest, rich</td></tr>
+    
+    <tr><td><code>pytest</code></td><td>9.1.1</td><td>9.1.1</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>python-dateutil</code></td><td>2.9.0.post0</td><td>2.9.0.post0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>requests</code></td><td>2.31.0</td><td>2.31.0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>rich</code></td><td>15.0.0</td><td>15.0.0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>setuptools</code></td><td>75.8.0</td><td>75.8.0</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>six</code></td><td>1.17.0</td><td>1.17.0</td>
+      <td>direct</td><td>python-dateutil</td></tr>
+    
+    <tr><td><code>toml</code></td><td>0.10.2</td><td>0.10.2</td>
+      <td>direct</td><td>-</td></tr>
+    
+    <tr><td><code>typing-extensions</code></td><td>4.16.0</td><td>4.16.0</td>
+      <td>transitive</td><td>pydantic</td></tr>
+    
+    <tr><td><code>urllib3</code></td><td>2.8.0</td><td>2.8.0</td>
+      <td>transitive</td><td>requests</td></tr>
+    
+  </table></div>
+  
+
+  <h2>Limitations</h2>
+  <div class="card"><ul><li>Usage discovery combines static AST analysis with a runtime call trace of the test suite; dynamic imports (importlib, __import__, plugins loaded by entry points) can still be missed.</li><li>Test-based verification is only as strong as the target&#39;s test suite: code paths the tests never reach are reported as open concerns rather than claimed as verified.</li><li>Model output is non-deterministic; each AI suggestion stays labelled &#39;ai&#39; until DoxOps has executed it, and rejected attempts are kept in the capsule.</li><li>Package-index signals (release age, classifiers, deprecation wording, PEP 792 status) are heuristics, not proof of abandonment.</li><li>Security vulnerabilities are out of scope for this challenge and are not scored.</li><li>Some proposals could not be verified; they are marked &#39;unverified&#39; in their capsules.</li></ul></div>
+
+  <h2>Evidence log</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Id</th><th>Kind</th><th>Python</th><th>Exit</th><th>Seconds</th><th>Command</th><th>SHA-256</th></tr>
+    
+    <tr><td class="mono">E001</td><td>git</td><td>-</td><td class="ok">0</td><td>2.391</td>
+      <td class="mono">git clone --depth 1 https://github.com/rishrek/LinkWatch &lt;out&gt;\work\target</td><td class="mono" title="053bd9280b2fa8ce791e870dee378d5f73208c821062f05826ae08dfde995ed3">053bd9280b2f</td></tr>
+    
+    <tr><td class="mono">E002</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\baseline-py3.12</td><td class="mono" title="012a02eb2fe0c7e03a744ed0b88e76affdfb049330a8115b57038d5240af0eff">012a02eb2fe0</td></tr>
+    
+    <tr><td class="mono">E003</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\baseline-py3.13</td><td class="mono" title="26eb7c07dc83cf1586ed803f9f7d4983538284fc82f597b54739eb6ff589bbc5">26eb7c07dc83</td></tr>
+    
+    <tr><td class="mono">E004</td><td>install</td><td>3.12</td><td class="ok">0</td><td>4.906</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\baseline-py3.12\Scripts\python.exe -r &lt;out&gt;\work\target\requirements-dev.txt -r &lt;o</td><td class="mono" title="8a7a2d6280c5f88e264e01620fbca678dd8d78e4cacd0e7440a238ecf162f6fb">8a7a2d6280c5</td></tr>
+    
+    <tr><td class="mono">E005</td><td>install</td><td>3.13</td><td class="ok">0</td><td>4.922</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\baseline-py3.13\Scripts\python.exe -r &lt;out&gt;\work\target\requirements-dev.txt -r &lt;o</td><td class="mono" title="33fae70d55291c6d88a6b0199e74d44677845992dc25597cd21e94b4b0d8ef58">33fae70d5529</td></tr>
+    
+    <tr><td class="mono">E006</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>13.391</td>
+      <td class="mono">&lt;out&gt;\work\venvs\baseline-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-baseline-py3.12.json pytest,nose,to</td><td class="mono" title="f8b5a8a3bf4454c46a469e4e8bbb0901bf286b0a5dec1110bfcee095e1896d6f">f8b5a8a3bf44</td></tr>
+    
+    <tr><td class="mono">E007</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.188</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\baseline-py3.12\Scripts\python.exe</td><td class="mono" title="fe9324815d49675b6cf0ddc0e650729375b84244ac3c71e0f1274d844efc100c">fe9324815d49</td></tr>
+    
+    <tr><td class="mono">E008</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>14.109</td>
+      <td class="mono">&lt;out&gt;\work\venvs\baseline-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-baseline-py3.13.json pytest,nose,to</td><td class="mono" title="664eb8c68af69462b961654b957c9ad5607865f40d3933258a6db0d6503b767c">664eb8c68af6</td></tr>
+    
+    <tr><td class="mono">E009</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\baseline-py3.13\Scripts\python.exe</td><td class="mono" title="966f99dff71eb6629ce40dcfc418b790c70908ed3eb0f2e31310311fa3129f2c">966f99dff71e</td></tr>
+    
+    <tr><td class="mono">E010</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>11.36</td>
+      <td class="mono">&lt;out&gt;\work\venvs\baseline-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\ta</td><td class="mono" title="d9a447326cb1ce8639ec491ff392302d5183e2472db26f1cea45bc85a2f68e12">d9a447326cb1</td></tr>
+    
+    <tr><td class="mono">E011</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>12.453</td>
+      <td class="mono">&lt;out&gt;\work\venvs\baseline-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\ta</td><td class="mono" title="8391f149dd7d48b859b59e28dcb48cac234a682860ab74d5b1efedf69f81d2cd">8391f149dd7d</td></tr>
+    
+    <tr><td class="mono">E012</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\jinja2-1-py3.12</td><td class="mono" title="f3dcc3a0546d8aa9e6acc1074a81c4bbed069046c6188e940bfdbb93fc1aca0c">f3dcc3a0546d</td></tr>
+    
+    <tr><td class="mono">E013</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\jinja2-1-py3.13</td><td class="mono" title="bd3133f56f6f92c8d868467e814bb12b612eccb5a9d20cd4af08a3f53ac3e3ea">bd3133f56f6f</td></tr>
+    
+    <tr><td class="mono">E014</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.187</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\jinja2-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\jinja2-1\requirements-de</td><td class="mono" title="04e941d13bdcc20ab12622ac4ac5441771d6f3eb125cce7a9848a81ecec745a6">04e941d13bdc</td></tr>
+    
+    <tr><td class="mono">E015</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.343</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\jinja2-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\jinja2-1\requirements-de</td><td class="mono" title="386af0e74a3ed14e0eeb6104181a243aeb144dd88b810806feffae89cd2dc638">386af0e74a3e</td></tr>
+    
+    <tr><td class="mono">E016</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.125</td>
+      <td class="mono">&lt;out&gt;\work\venvs\jinja2-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-jinja2-1-py3.12.json jinja2</td><td class="mono" title="4990a23bd6c437f87a63265ced61871b43a2252f1d133b47813e05aebe37a637">4990a23bd6c4</td></tr>
+    
+    <tr><td class="mono">E017</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.281</td>
+      <td class="mono">&lt;out&gt;\work\venvs\jinja2-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-jinja2-1-py3.13.json jinja2</td><td class="mono" title="0ae24077bcc9868425e0601043afc84cac9aeecc92d970237786abc7c72449f3">0ae24077bcc9</td></tr>
+    
+    <tr><td class="mono">E018</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.063</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\jinja2-1-py3.12\Scripts\python.exe</td><td class="mono" title="eb1074ff455a2f698224d4f0ef3bf9825f552afaad0f6005dbe19dbf4230aa14">eb1074ff455a</td></tr>
+    
+    <tr><td class="mono">E019</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\jinja2-1-py3.13\Scripts\python.exe</td><td class="mono" title="59b04657d7f327225d1e8616f8a37e5a096b07dd7ae856877c9df24a27456f00">59b04657d7f3</td></tr>
+    
+    <tr><td class="mono">E020</td><td>test-run</td><td>3.13</td><td class="ok">0</td><td>12.797</td>
+      <td class="mono">&lt;out&gt;\work\venvs\jinja2-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\at</td><td class="mono" title="072d742694c75116326da369aaf687cc1568f00ba4dae0a1b7ad9c4c63a0360a">072d742694c7</td></tr>
+    
+    <tr><td class="mono">E021</td><td>test-run</td><td>3.12</td><td class="ok">0</td><td>12.797</td>
+      <td class="mono">&lt;out&gt;\work\venvs\jinja2-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\at</td><td class="mono" title="60d6a1fef303a3ba48b00d17fa23ecd7847c796a374783458ab272532224d093">60d6a1fef303</td></tr>
+    
+    <tr><td class="mono">E022</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\nose-1-py3.12</td><td class="mono" title="f2a5565bd9ab999e66b60e3bc1ee0b933f9573d4e5e5f04c6103f8aea4f50ac6">f2a5565bd9ab</td></tr>
+    
+    <tr><td class="mono">E023</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\nose-1-py3.13</td><td class="mono" title="de90045eb4e9900ae8309f775be132bb13f5f257a275e0fac94bcdab1c35f1e0">de90045eb4e9</td></tr>
+    
+    <tr><td class="mono">E024</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.125</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-1\requirements-dev.tx</td><td class="mono" title="61d0cd281b88348f5f3d6d113db80cb5c8bf7f6cf770698f95b61bc00bf498f5">61d0cd281b88</td></tr>
+    
+    <tr><td class="mono">E025</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.141</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-1\requirements-dev.tx</td><td class="mono" title="01b79f3b2e1a1b16de4995b2bd15add3c89a513a28899aa7c26695ea69d263d3">01b79f3b2e1a</td></tr>
+    
+    <tr><td class="mono">E026</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>2.438</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-1-py3.13.json pytest</td><td class="mono" title="3a9431fde39692511930910d7fc20b402e6c7c7da93a220f997005cd66493405">3a9431fde396</td></tr>
+    
+    <tr><td class="mono">E027</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>2.437</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-1-py3.12.json pytest</td><td class="mono" title="883d54f58a4560baf74bba6cf9273bb98b527f16f409a9de8e5e4d6f1a1bd24e">883d54f58a45</td></tr>
+    
+    <tr><td class="mono">E028</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.093</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-1-py3.13\Scripts\python.exe</td><td class="mono" title="4b93969d8e50e88fc32a25e6e05dabc3d33f0cb6ec2c73361daf23498bc8d633">4b93969d8e50</td></tr>
+    
+    <tr><td class="mono">E029</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.062</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-1-py3.12\Scripts\python.exe</td><td class="mono" title="0582647e9786d7afe9784be1f7cdd65d40fa9a6a624ca61930eefd36a34fb55b">0582647e9786</td></tr>
+    
+    <tr><td class="mono">E030</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>12.891</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="08e4d3c70c263ba5028c8a903660cc0acd59a92b3b368aa2e1901ebc16ec51e1">08e4d3c70c26</td></tr>
+    
+    <tr><td class="mono">E031</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>12.891</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="ccb6617de6ea7874eb768ae0dd79a2c85176ed55547680630589393ea46a9cdf">ccb6617de6ea</td></tr>
+    
+    <tr><td class="mono">E032</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\nose-2-py3.12</td><td class="mono" title="7107128408cd401adde4acd901a99497c58c6b90e2b5a2924de6100ac703fd3e">7107128408cd</td></tr>
+    
+    <tr><td class="mono">E033</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\nose-2-py3.13</td><td class="mono" title="0d639bb04a3e5510db89de385c035db8af21915baa56d2d1672d58202835684d">0d639bb04a3e</td></tr>
+    
+    <tr><td class="mono">E034</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-2-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-2\requirements-dev.tx</td><td class="mono" title="6e0a9f64d28f9d99f1072072220924bdbe2c9ccc141f907f87c859ab1c29b278">6e0a9f64d28f</td></tr>
+    
+    <tr><td class="mono">E035</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-2-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-2\requirements-dev.tx</td><td class="mono" title="f0fee7b552594b48424ffce8f4f2af0dad9d5f186c60cf602575a3287bd6d571">f0fee7b55259</td></tr>
+    
+    <tr><td class="mono">E036</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>2.437</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-2-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-2-py3.13.json pytest</td><td class="mono" title="a98c8340d9d64a9673149ef3ce832691f194d81e79bcb1c22918edd7c6ef18bf">a98c8340d9d6</td></tr>
+    
+    <tr><td class="mono">E037</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>2.453</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-2-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-2-py3.12.json pytest</td><td class="mono" title="b45130a62c7d033193b12d04457ff95a195abae80a8c3d4b8afc095f34b046da">b45130a62c7d</td></tr>
+    
+    <tr><td class="mono">E038</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-2-py3.13\Scripts\python.exe</td><td class="mono" title="a1af5ae6467c044159132de04c0ffabcf3006e13ffd451e07d24d617aee95636">a1af5ae6467c</td></tr>
+    
+    <tr><td class="mono">E039</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-2-py3.12\Scripts\python.exe</td><td class="mono" title="c51d13466582c6ace6a0518ffe346234c7601960ce58ec6fc95a0f8c8f9d318b">c51d13466582</td></tr>
+    
+    <tr><td class="mono">E040</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>12.828</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-2-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="8b7baf427e1b0168a45c10c56fe2b5818410571b716d27a22e747a7407a81feb">8b7baf427e1b</td></tr>
+    
+    <tr><td class="mono">E041</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>12.906</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-2-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="fe49959184c264701594b936e6aef4310a7eb7209cd79360ec90b18c85082faf">fe49959184c2</td></tr>
+    
+    <tr><td class="mono">E042</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\nose-3-py3.12</td><td class="mono" title="ad338598538d184cf510612a325924ede77a735bf42c35705a8fbb0c2c817f42">ad338598538d</td></tr>
+    
+    <tr><td class="mono">E043</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\nose-3-py3.13</td><td class="mono" title="632bfebea99291dd4c8a06b29b6b02039cbba1626000cc98c4135660f2fb2958">632bfebea992</td></tr>
+    
+    <tr><td class="mono">E044</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.109</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-3-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-3\requirements-dev.tx</td><td class="mono" title="519d2ee1427d4b0c2e96f746548b33dc9266ec10fec755f8f5494e4a984fb856">519d2ee1427d</td></tr>
+    
+    <tr><td class="mono">E045</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.109</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\nose-3-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\nose-3\requirements-dev.tx</td><td class="mono" title="55ccdce08b71e15a72b6d81239ffcb5f81e3d39760217f19fe6805772bfc49c5">55ccdce08b71</td></tr>
+    
+    <tr><td class="mono">E046</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>2.39</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-3-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-3-py3.13.json pytest</td><td class="mono" title="ea4ddec70ab0bbf8ca3ea6c6c462f8d409b8791f0672e41702c529e4b870f214">ea4ddec70ab0</td></tr>
+    
+    <tr><td class="mono">E047</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>2.469</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-3-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-nose-3-py3.12.json pytest</td><td class="mono" title="a27eb584c739bf68064ec3d3d127a46b0b8c8d3c813e465ac34b4c9acb653e28">a27eb584c739</td></tr>
+    
+    <tr><td class="mono">E048</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-3-py3.13\Scripts\python.exe</td><td class="mono" title="d1c47efc870bdf99d5ee3826e4b807aa15ca6cb1a7a8373a602e88a67c610292">d1c47efc870b</td></tr>
+    
+    <tr><td class="mono">E049</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.063</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\nose-3-py3.12\Scripts\python.exe</td><td class="mono" title="51bde99cb34ddce631fdfebc4eb7f5bf24b9c6a34a4e206fb99661c759b1e3d3">51bde99cb34d</td></tr>
+    
+    <tr><td class="mono">E050</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>12.89</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-3-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="bb2c20aca393dcc6819fd354ebf3fa822b2f06d1056c77f102d894b5e189ccb5">bb2c20aca393</td></tr>
+    
+    <tr><td class="mono">E051</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>13.625</td>
+      <td class="mono">&lt;out&gt;\work\venvs\nose-3-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="1e6df05ee2219fc7715bb5eccfa613c3f6017762299bcddee14574db9eea0126">1e6df05ee221</td></tr>
+    
+    <tr><td class="mono">E052</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\pydantic-1-py3.12</td><td class="mono" title="2f9f3e0ef1ab0e6ad805cf35e8576856de5934af86fea8d704a2ea2fb5d175e3">2f9f3e0ef1ab</td></tr>
+    
+    <tr><td class="mono">E053</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\pydantic-1-py3.13</td><td class="mono" title="6f929c1913fc025e18642623bd06745347dff3cfc7c413e90d7de266252733a7">6f929c1913fc</td></tr>
+    
+    <tr><td class="mono">E054</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.953</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\pydantic-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\pydantic-1\requirement</td><td class="mono" title="9b513cb6f18c59431c1cd8fecd6b4f6635de5a5f819718784316f9bc82adf158">9b513cb6f18c</td></tr>
+    
+    <tr><td class="mono">E055</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.328</td>
+      <td class="mono">&lt;out&gt;\work\venvs\pydantic-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-pydantic-1-py3.12.json pydantic</td><td class="mono" title="7735daec86a8f9634fa45c32cb905692ba014a5f4fd83fd17470605a283c2ed2">7735daec86a8</td></tr>
+    
+    <tr><td class="mono">E056</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.093</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\pydantic-1-py3.12\Scripts\python.exe</td><td class="mono" title="73a9a97c3fc80225cfd1447bbb217266aa054958811341ef75f73960fe4c26de">73a9a97c3fc8</td></tr>
+    
+    <tr><td class="mono">E057</td><td>install</td><td>3.13</td><td class="ok">0</td><td>13.61</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\pydantic-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\pydantic-1\requirement</td><td class="mono" title="fbf3459e629c2733a2eef0564bc3fbc61306930bd4ad42c5880b72c1cbf343ef">fbf3459e629c</td></tr>
+    
+    <tr><td class="mono">E058</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.25</td>
+      <td class="mono">&lt;out&gt;\work\venvs\pydantic-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-pydantic-1-py3.13.json pydantic</td><td class="mono" title="aeb1e049e1abfdaf0dea57ae920dc0a635ad4f322ac71b54c170504769513639">aeb1e049e1ab</td></tr>
+    
+    <tr><td class="mono">E059</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.079</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\pydantic-1-py3.13\Scripts\python.exe</td><td class="mono" title="9d1c0cfc10c2b2d5605e5cb6b472d3cc149980d59df98cb0737ceab40399f232">9d1c0cfc10c2</td></tr>
+    
+    <tr><td class="mono">E060</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>14.188</td>
+      <td class="mono">&lt;out&gt;\work\venvs\pydantic-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="0be879cfa18d658adb92dfca18fb97915ec9f2ad02cae896c14aeb3e1584a02f">0be879cfa18d</td></tr>
+    
+    <tr><td class="mono">E061</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.375</td>
+      <td class="mono">&lt;out&gt;\work\venvs\pydantic-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="e711b1dff6b437f7c7888ae887417e064b1530bc30404ccc3c96b1aff12022ff">e711b1dff6b4</td></tr>
+    
+    <tr><td class="mono">E062</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\setuptools-1-py3.12</td><td class="mono" title="e45377c5e94f70b46195d519163a2646e5f2eedc38b8782d9a17eee624becc59">e45377c5e94f</td></tr>
+    
+    <tr><td class="mono">E063</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\setuptools-1-py3.13</td><td class="mono" title="e30802eaab3b209a80f01d35563d1d5348bff5810f5153b5f45a84fc63d941aa">e30802eaab3b</td></tr>
+    
+    <tr><td class="mono">E064</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.734</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\setuptools-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\setuptools-1\require</td><td class="mono" title="84d0ea1f979ffe94d13763d2d0231dfb93196c21fd2f2d9e8784c1d9be39719a">84d0ea1f979f</td></tr>
+    
+    <tr><td class="mono">E065</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.75</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\setuptools-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\setuptools-1\require</td><td class="mono" title="b7d065714c931fce8ea58ebb971d178d31abe110878734345bfa2fd64a4883b9">b7d065714c93</td></tr>
+    
+    <tr><td class="mono">E066</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>0.796</td>
+      <td class="mono">&lt;out&gt;\work\venvs\setuptools-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-setuptools-1-py3.13.json import</td><td class="mono" title="30b1d08cd30974d86084889950148300bdbbd353757a909d67e6f1494b2ba940">30b1d08cd309</td></tr>
+    
+    <tr><td class="mono">E067</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>0.812</td>
+      <td class="mono">&lt;out&gt;\work\venvs\setuptools-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-setuptools-1-py3.12.json import</td><td class="mono" title="6d7ab81df87850b69f57b67989e49a6ed31c92ba786891a327d8e1eaffd02d79">6d7ab81df878</td></tr>
+    
+    <tr><td class="mono">E068</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.079</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\setuptools-1-py3.13\Scripts\python.exe</td><td class="mono" title="f0e63b6f5b633b9e77e7c79d3aefd3aaa03e41e40212f519c4e0015a009c2165">f0e63b6f5b63</td></tr>
+    
+    <tr><td class="mono">E069</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.079</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\setuptools-1-py3.12\Scripts\python.exe</td><td class="mono" title="83c665c92d0cef1624ae5238f7f42a52cb121deaa78b8cabe527316f614bebd0">83c665c92d0c</td></tr>
+    
+    <tr><td class="mono">E070</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>13.265</td>
+      <td class="mono">&lt;out&gt;\work\venvs\setuptools-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\wor</td><td class="mono" title="b26ba48e90837c56b6644fd121d9a5af3f0445f912d694d9c8948717d153fd2d">b26ba48e9083</td></tr>
+    
+    <tr><td class="mono">E071</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>13.328</td>
+      <td class="mono">&lt;out&gt;\work\venvs\setuptools-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\wor</td><td class="mono" title="bbf31800263b7b74f86c5d615cef44f4edfbae5f0121df0b96af4755bcc2da4b">bbf31800263b</td></tr>
+    
+    <tr><td class="mono">E072</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\requests-1-py3.12</td><td class="mono" title="c392728a11d94ecd096b7b28b7038459241347d4b35fc306771ca11bab6c7b90">c392728a11d9</td></tr>
+    
+    <tr><td class="mono">E073</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\requests-1-py3.13</td><td class="mono" title="a0e9df7d2dd66d398f74412531de1953020898fecc03fb19493fd556501749b7">a0e9df7d2dd6</td></tr>
+    
+    <tr><td class="mono">E074</td><td>install</td><td>3.12</td><td class="ok">0</td><td>5.281</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\requests-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\requests-1\requirement</td><td class="mono" title="6bd7ea28a2632ae12a0bdf03510e31bc0c32ea30aa40086b5e89b14e09446d15">6bd7ea28a263</td></tr>
+    
+    <tr><td class="mono">E075</td><td>install</td><td>3.13</td><td class="ok">0</td><td>5.281</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\requests-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\requests-1\requirement</td><td class="mono" title="69fc0810635bf75087c859c37712690f9c4b9fbfa9953d293c7b1547d32411e1">69fc0810635b</td></tr>
+    
+    <tr><td class="mono">E076</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>2.265</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-requests-1-py3.13.json httpx</td><td class="mono" title="483b92d4ca169e60af533f8376d720c46ead8251bc6b3b19f9e29e27dddc88e0">483b92d4ca16</td></tr>
+    
+    <tr><td class="mono">E077</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>2.297</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-requests-1-py3.12.json httpx</td><td class="mono" title="f30168a7eab7c2fe5985a6d4b37a57386f04055ba6d978a9c25a7dd3494ba5ec">f30168a7eab7</td></tr>
+    
+    <tr><td class="mono">E078</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\requests-1-py3.12\Scripts\python.exe</td><td class="mono" title="cd850267d6a7eac790272ce69d9e20aa40c9f6a07ebbc65d28574cbb4806d992">cd850267d6a7</td></tr>
+    
+    <tr><td class="mono">E079</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\requests-1-py3.13\Scripts\python.exe</td><td class="mono" title="f0ee3998bbc29ebc203c25a6b0a51a75c39b9e15e1db332d369c61463f14e7f0">f0ee3998bbc2</td></tr>
+    
+    <tr><td class="mono">E080</td><td>test-run</td><td>3.12</td><td class="fail">4</td><td>1.704</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="db080ef281e91bd4d62bd6ed175ec56b6bed70350551f4c62b3fff912e7a9472">db080ef281e9</td></tr>
+    
+    <tr><td class="mono">E081</td><td>test-run</td><td>3.13</td><td class="fail">4</td><td>1.719</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="a75fd7a7829cbf253ea5b6e95380f104e2d8c490c6dedb058ccc23e6edbf6756">a75fd7a7829c</td></tr>
+    
+    <tr><td class="mono">E082</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\requests-2-py3.12</td><td class="mono" title="de6af8614237ed5fbfc281ca2748ee5565289f3fdea4312f71b9e97c54cdefba">de6af8614237</td></tr>
+    
+    <tr><td class="mono">E083</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\requests-2-py3.13</td><td class="mono" title="a640d1e5f2944574d937ed2b0572405ebf9d005cf05e1c4c21b0900b7298566c">a640d1e5f294</td></tr>
+    
+    <tr><td class="mono">E084</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.39</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\requests-2-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\requests-2\requirement</td><td class="mono" title="bc22dce9a388d8f4ad1b1368d77a08b34baaf0d792b2264163501425f0a2ffb4">bc22dce9a388</td></tr>
+    
+    <tr><td class="mono">E085</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.39</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\requests-2-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\requests-2\requirement</td><td class="mono" title="ed1cb2d5d5b6191292948793c3b09b4c9e6eca8fc5a0ba6daa0da7cbb11e8e7e">ed1cb2d5d5b6</td></tr>
+    
+    <tr><td class="mono">E086</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>2.266</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-2-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-requests-2-py3.13.json requests</td><td class="mono" title="ccd078fd9cecc75c4925d21bb021d40455669de7b7164418e8c142d1fa813383">ccd078fd9cec</td></tr>
+    
+    <tr><td class="mono">E087</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>2.266</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-2-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-requests-2-py3.12.json requests</td><td class="mono" title="57e31cfada8a24db2938b66f14126b7ab0abc33d487436e31dbd63e129d9e99e">57e31cfada8a</td></tr>
+    
+    <tr><td class="mono">E088</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.063</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\requests-2-py3.13\Scripts\python.exe</td><td class="mono" title="8f8f4fc5d96ef53fe16d448d98bee6131e805364d6e399c75568701d447ef43c">8f8f4fc5d96e</td></tr>
+    
+    <tr><td class="mono">E089</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.063</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\requests-2-py3.12\Scripts\python.exe</td><td class="mono" title="7e795d6bdc0180751fadae37b9135d5325d82279a28d21e2cfb50567bb228c6c">7e795d6bdc01</td></tr>
+    
+    <tr><td class="mono">E090</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.062</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-2-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="ffc90d177cf62275725528b51be658e314add5ac0a4135bf51fea41d5a5ba985">ffc90d177cf6</td></tr>
+    
+    <tr><td class="mono">E091</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>14.078</td>
+      <td class="mono">&lt;out&gt;\work\venvs\requests-2-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\</td><td class="mono" title="e0e4452022a433d2badd5107030cf2e2e878fc33a19f9b6fe4d7ca3876cb32fb">e0e4452022a4</td></tr>
+    
+    <tr><td class="mono">E092</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\idna-1-py3.13</td><td class="mono" title="f6a30bee5391bf5e7a9135cdccdc3606536cc3adb5f62ce28bfe8658e4566a52">f6a30bee5391</td></tr>
+    
+    <tr><td class="mono">E093</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.125</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\idna-1-py3.12</td><td class="mono" title="c3108562c7bdcbaebf806003eda6f5ee99fe17647bbc1c234d599876947437fa">c3108562c7bd</td></tr>
+    
+    <tr><td class="mono">E094</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.172</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\idna-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\idna-1\requirements-dev.tx</td><td class="mono" title="5a3033be3a3d984b38bb3d916a8ad191d53092f03a60c6599a7ffb7a935fc367">5a3033be3a3d</td></tr>
+    
+    <tr><td class="mono">E095</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.187</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\idna-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\idna-1\requirements-dev.tx</td><td class="mono" title="86b2814843cb9360e2fa10c734cd81a6b8366619024ef89e70663333bd4efb7c">86b2814843cb</td></tr>
+    
+    <tr><td class="mono">E096</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>0.5</td>
+      <td class="mono">&lt;out&gt;\work\venvs\idna-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-idna-1-py3.12.json </td><td class="mono" title="28d191cd1fa67d232ed9561623a3aa81d7330992abc81c5a689eda3e81235bea">28d191cd1fa6</td></tr>
+    
+    <tr><td class="mono">E097</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>0.515</td>
+      <td class="mono">&lt;out&gt;\work\venvs\idna-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-idna-1-py3.13.json </td><td class="mono" title="c52e000e911f835a58b575cf155827a37f8eefc073fd97462c1b9fd810091e5d">c52e000e911f</td></tr>
+    
+    <tr><td class="mono">E098</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\idna-1-py3.12\Scripts\python.exe</td><td class="mono" title="8f3f9ef541a0a4270a860c8766aff6db0e3a249930f49ce4edeb90111eccbc23">8f3f9ef541a0</td></tr>
+    
+    <tr><td class="mono">E099</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\idna-1-py3.13\Scripts\python.exe</td><td class="mono" title="68e79c26eb752b6c867fe3c0556642338c9cef5c8391a091660f332d5e633611">68e79c26eb75</td></tr>
+    
+    <tr><td class="mono">E100</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.531</td>
+      <td class="mono">&lt;out&gt;\work\venvs\idna-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="70035fe88ed2d5e48eae2f05aa64bed170c107d90567639aeed66b48fa14c066">70035fe88ed2</td></tr>
+    
+    <tr><td class="mono">E101</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.094</td>
+      <td class="mono">&lt;out&gt;\work\venvs\idna-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="f3aab1570f07b811df68c3684f7d1e5e04e296cd27adbb61dacf20a91bc13828">f3aab1570f07</td></tr>
+    
+    <tr><td class="mono">E102</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\appdirs-1-py3.12</td><td class="mono" title="e670fd7de13c493f776ab360fa81bd9735614c7012511976d074844892981522">e670fd7de13c</td></tr>
+    
+    <tr><td class="mono">E103</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\appdirs-1-py3.13</td><td class="mono" title="bbf8e426707b8fca3956f8ec94865fb4eeafa0a3782b29b43e6e3b7e9d009465">bbf8e426707b</td></tr>
+    
+    <tr><td class="mono">E104</td><td>install</td><td>3.12</td><td class="ok">0</td><td>4.172</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\appdirs-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\appdirs-1\requirements-</td><td class="mono" title="4b3ffc09539bebdcca87844e7cf007a1e60f20f0185ece1f15db3f8d37d99874">4b3ffc09539b</td></tr>
+    
+    <tr><td class="mono">E105</td><td>install</td><td>3.13</td><td class="ok">0</td><td>4.187</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\appdirs-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\appdirs-1\requirements-</td><td class="mono" title="cc62bccc64fb6b76742d888cac4f1c104d8b4ce2e919a3b319df1b02131c7aff">cc62bccc64fb</td></tr>
+    
+    <tr><td class="mono">E106</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.031</td>
+      <td class="mono">&lt;out&gt;\work\venvs\appdirs-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-appdirs-1-py3.12.json platformdirs</td><td class="mono" title="b8a79b22039c2c972c6899074ef14d8179a33bbeb52f1500d9fdcb619ae182a3">b8a79b22039c</td></tr>
+    
+    <tr><td class="mono">E107</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.047</td>
+      <td class="mono">&lt;out&gt;\work\venvs\appdirs-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-appdirs-1-py3.13.json platformdirs</td><td class="mono" title="2f04534c65057970a4082e8c0f1ec15e73f1f4f2f8440c19e4f07a33fa7c7e28">2f04534c6505</td></tr>
+    
+    <tr><td class="mono">E108</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\appdirs-1-py3.12\Scripts\python.exe</td><td class="mono" title="21da4851ff9cd579e1b881f538b93986b35225dfb40b042fea8d322c591c1cd7">21da4851ff9c</td></tr>
+    
+    <tr><td class="mono">E109</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\appdirs-1-py3.13\Scripts\python.exe</td><td class="mono" title="249d3e1ae69e1b620ed54aacca2f6d47bbfa7af9bb2a950c8c587844ede17562">249d3e1ae69e</td></tr>
+    
+    <tr><td class="mono">E110</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.531</td>
+      <td class="mono">&lt;out&gt;\work\venvs\appdirs-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="9a906539a4b0a8baf6019501c0506447fa07415dfeb7aebd3626bc2fd9623081">9a906539a4b0</td></tr>
+    
+    <tr><td class="mono">E111</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>15.593</td>
+      <td class="mono">&lt;out&gt;\work\venvs\appdirs-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="b6fa5b12060f2c3d158ec22959f9ba4a125076858305b276a81f38f5c4788550">b6fa5b12060f</td></tr>
+    
+    <tr><td class="mono">E112</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\toml-1-py3.13</td><td class="mono" title="676ee309e65e792aa5c2025922b6a8d27b5a5d74fdf60720fa40d6f2b7e1a425">676ee309e65e</td></tr>
+    
+    <tr><td class="mono">E113</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\toml-1-py3.12</td><td class="mono" title="dbe845cb710e1f2d22c4b6831e34a1c83e8ac5db98bc833dd7aa6cc5b72fc087">dbe845cb710e</td></tr>
+    
+    <tr><td class="mono">E114</td><td>install</td><td>3.13</td><td class="ok">0</td><td>2.719</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-1\requirements-dev.tx</td><td class="mono" title="d804edd31a0fa921bff590d7afacc8e669dfbbb61ef16e89ab9624a43acb591c">d804edd31a0f</td></tr>
+    
+    <tr><td class="mono">E115</td><td>install</td><td>3.12</td><td class="ok">0</td><td>2.844</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-1\requirements-dev.tx</td><td class="mono" title="2fd80a26f10e300ba68e89d096acf62decca101b7e0bd3e4f1a5ce7a14696cfa">2fd80a26f10e</td></tr>
+    
+    <tr><td class="mono">E116</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.016</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-1-py3.13.json tomli</td><td class="mono" title="1ba6058c64518e0bcef5c9212a3340989e4e43a2ea572af54777ebbfb91aff22">1ba6058c6451</td></tr>
+    
+    <tr><td class="mono">E117</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-1-py3.13\Scripts\python.exe</td><td class="mono" title="1d06f25d8a46e31d133aab658a5e9f2870807bf86d4634b617c0e3f9a830b580">1d06f25d8a46</td></tr>
+    
+    <tr><td class="mono">E118</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>0.984</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-1-py3.12.json tomli</td><td class="mono" title="06195c2dee4338d79ed2cdf64c1b75c002456f0bc8819f26427e500fa16cfbaf">06195c2dee43</td></tr>
+    
+    <tr><td class="mono">E119</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-1-py3.12\Scripts\python.exe</td><td class="mono" title="da4d5c95f3539f756136566841c39a2f398d0ccb2167e5555c968dc0799b3739">da4d5c95f353</td></tr>
+    
+    <tr><td class="mono">E120</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.812</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="686c958bbc78faa83208586dfa04ad318359ff215b29d7d77f2afc849908ff7e">686c958bbc78</td></tr>
+    
+    <tr><td class="mono">E121</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>14.719</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="daf3603a73a8c693a1f230475b9020faa2551f96a3a7d3bc6bafe217f0259868">daf3603a73a8</td></tr>
+    
+    <tr><td class="mono">E122</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\toml-2-py3.12</td><td class="mono" title="bd0d53f0116050c43cca2d19fcece2a6883368c8378a7bb2251df12f64dc4bda">bd0d53f01160</td></tr>
+    
+    <tr><td class="mono">E123</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\toml-2-py3.13</td><td class="mono" title="a189c16c0ecc4061842c4550c8dab62fdd49ca1bbd3d337f430d3247789fe77c">a189c16c0ecc</td></tr>
+    
+    <tr><td class="mono">E124</td><td>install</td><td>3.12</td><td class="ok">0</td><td>2.61</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-2-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-2\requirements-dev.tx</td><td class="mono" title="427b6011cec2295527340d5914af08bf622a16d6894f38d412a3f005723429f4">427b6011cec2</td></tr>
+    
+    <tr><td class="mono">E125</td><td>install</td><td>3.13</td><td class="ok">0</td><td>2.61</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-2-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-2\requirements-dev.tx</td><td class="mono" title="27d8b432e990c4af0b97f963753f43bd1ef668ebe7111a9c3b327dbec5339a6a">27d8b432e990</td></tr>
+    
+    <tr><td class="mono">E126</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.109</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-2-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-2-py3.12.json tomli</td><td class="mono" title="fb0478811c8467488dcf3c9f085e434d08ff73059c9b3c4e280229d840d6e856">fb0478811c84</td></tr>
+    
+    <tr><td class="mono">E127</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.109</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-2-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-2-py3.13.json tomli</td><td class="mono" title="2dd3c414b0e24e92facd17a4da5fdeee21eb6b41ba5b691611e21b9b2dabd8e5">2dd3c414b0e2</td></tr>
+    
+    <tr><td class="mono">E128</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.062</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-2-py3.12\Scripts\python.exe</td><td class="mono" title="96cf4dea22d2f49115feedcc10f5f9ddafa761345925f1864006617f1fada78a">96cf4dea22d2</td></tr>
+    
+    <tr><td class="mono">E129</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-2-py3.13\Scripts\python.exe</td><td class="mono" title="bfc245bcee058de4803fee39d57458c8963964fae21fda7de5f36243dd389e57">bfc245bcee05</td></tr>
+    
+    <tr><td class="mono">E130</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>15.078</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-2-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="5efbf91221d0d56bb29a7ad41cdc257fd7e4e5c101967f7e2fbd3a2374a06133">5efbf91221d0</td></tr>
+    
+    <tr><td class="mono">E131</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.5</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-2-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="77cb1114e39efe20c2d1c32b172c275ec5189954e9bd105dbd00fb85a7a49344">77cb1114e39e</td></tr>
+    
+    <tr><td class="mono">E132</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.093</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\toml-3-py3.12</td><td class="mono" title="076d758e18eafa55a58806fd9482d35487d205b51b1268d9a38ea5a50036da66">076d758e18ea</td></tr>
+    
+    <tr><td class="mono">E133</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.093</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\toml-3-py3.13</td><td class="mono" title="e1f921c1348a4df91cbea13d96746057fc7a7b035c170288caeb02de3ec87dd0">e1f921c1348a</td></tr>
+    
+    <tr><td class="mono">E134</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.625</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-3-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-3\requirements-dev.tx</td><td class="mono" title="5b07a4a4a7995c93b15ed788c2f9872e3b173a42908e59e966a4840e14cc1c49">5b07a4a4a799</td></tr>
+    
+    <tr><td class="mono">E135</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.657</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\toml-3-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\toml-3\requirements-dev.tx</td><td class="mono" title="581721843df67be9f8fd872294ee671db3dc720111117ae38620d2f3d4a5d29f">581721843df6</td></tr>
+    
+    <tr><td class="mono">E136</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.047</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-3-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-3-py3.13.json tomli</td><td class="mono" title="01d2187ffe8faabc3d0371b4090630d3ef429827f869bd8c4877a2ac3b4fac65">01d2187ffe8f</td></tr>
+    
+    <tr><td class="mono">E137</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.078</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-3-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-toml-3-py3.12.json tomli</td><td class="mono" title="2ef6cf95c5165b1ede7ee92d7153840d11b97579d800dd05d39b81969442ea95">2ef6cf95c516</td></tr>
+    
+    <tr><td class="mono">E138</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-3-py3.13\Scripts\python.exe</td><td class="mono" title="7607598984b7e27dfce0e4d96a9b29a68f4b1596b28e5cd73b4d400a189b3962">7607598984b7</td></tr>
+    
+    <tr><td class="mono">E139</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.079</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\toml-3-py3.12\Scripts\python.exe</td><td class="mono" title="a7337d45c25c6693d0464def6bf85c3ab308fc04f4fd4f3a65e115869e7be872">a7337d45c25c</td></tr>
+    
+    <tr><td class="mono">E140</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.969</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-3-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="13666059918704b56e21827ffb4649ab794dab68e30feb11eaf93e654181d19b">136660599187</td></tr>
+    
+    <tr><td class="mono">E141</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.468</td>
+      <td class="mono">&lt;out&gt;\work\venvs\toml-3-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\atte</td><td class="mono" title="ee21f9d4663f404910dfb83f652e6635ac171e34f6bd8c8b44815670968a0282">ee21f9d4663f</td></tr>
+    
+    <tr><td class="mono">E142</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\certifi-1-py3.12</td><td class="mono" title="0a932bb211b068d8b3c2f4ce3e194c01df8bde80f74f7634173bc2bd328193b0">0a932bb211b0</td></tr>
+    
+    <tr><td class="mono">E143</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.125</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\certifi-1-py3.13</td><td class="mono" title="60a5d5c17447f1e4a888d484ee2c4aef16a3f24011383619ce1596f715ec1eec">60a5d5c17447</td></tr>
+    
+    <tr><td class="mono">E144</td><td>install</td><td>3.13</td><td class="ok">0</td><td>2.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\certifi-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\certifi-1\requirements-</td><td class="mono" title="c9c25e54642b9be592a4ca32a87743380d97ae9ab966533f6c34b23ebad1ced1">c9c25e54642b</td></tr>
+    
+    <tr><td class="mono">E145</td><td>install</td><td>3.12</td><td class="ok">0</td><td>2.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\certifi-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\certifi-1\requirements-</td><td class="mono" title="2ca79c82e7494a38a797f532edba77709fe8eb54525244b10ecc500db63247f1">2ca79c82e749</td></tr>
+    
+    <tr><td class="mono">E146</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>0.89</td>
+      <td class="mono">&lt;out&gt;\work\venvs\certifi-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-certifi-1-py3.13.json certifi</td><td class="mono" title="d1bbea511abd7877936664194ba270d418800e1ed9d1d46c70e0d72e6a049fed">d1bbea511abd</td></tr>
+    
+    <tr><td class="mono">E147</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>0.89</td>
+      <td class="mono">&lt;out&gt;\work\venvs\certifi-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-certifi-1-py3.12.json certifi</td><td class="mono" title="2190c7a4a9551cb4fa4185aaff6d2ae813aaa761cc61de23a2a2fb15774b1db9">2190c7a4a955</td></tr>
+    
+    <tr><td class="mono">E148</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.266</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\certifi-1-py3.12\Scripts\python.exe</td><td class="mono" title="f3ffb8ca39cfe3a0cc6cd3424dd52c33ee9613ebe9e896675c41999076a75ecd">f3ffb8ca39cf</td></tr>
+    
+    <tr><td class="mono">E149</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.266</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\certifi-1-py3.13\Scripts\python.exe</td><td class="mono" title="ddf57fa4deff331ba5d262d95cda1e897ec92c4c685f064b265b72625cb55cec">ddf57fa4deff</td></tr>
+    
+    <tr><td class="mono">E150</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>15.25</td>
+      <td class="mono">&lt;out&gt;\work\venvs\certifi-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="e1072578a8b16192f4024e0b88d4001ad7bb92f220b5f2f21c195cd3624b4569">e1072578a8b1</td></tr>
+    
+    <tr><td class="mono">E151</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.781</td>
+      <td class="mono">&lt;out&gt;\work\venvs\certifi-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="dd5c75849e9b48ff2452bbea5eba210e01398f8168ddd7d6ad66897bdcf59dcb">dd5c75849e9b</td></tr>
+    
+    <tr><td class="mono">E152</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\chardet-1-py3.12</td><td class="mono" title="dd1b96616c2a204b3459406193a825cf7f88966401b67cc761e8dbebfb69f67c">dd1b96616c2a</td></tr>
+    
+    <tr><td class="mono">E153</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\chardet-1-py3.13</td><td class="mono" title="3f0e23de4f8986e41ad15b3a4d857b906b134363fdfb89ff9cf6980097a99080">3f0e23de4f89</td></tr>
+    
+    <tr><td class="mono">E154</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.203</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\chardet-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\chardet-1\requirements-</td><td class="mono" title="5a5f361861b40bddb9da60b4e505eb2fe75c8068c649a8bb67fe889eda6eb91f">5a5f361861b4</td></tr>
+    
+    <tr><td class="mono">E155</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.219</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\chardet-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\chardet-1\requirements-</td><td class="mono" title="dbd333e1831c46b53d0a2b390dd75cf7a4c5032fb528e0cd8c4af7b8faf4ceeb">dbd333e1831c</td></tr>
+    
+    <tr><td class="mono">E156</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>1.047</td>
+      <td class="mono">&lt;out&gt;\work\venvs\chardet-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-chardet-1-py3.13.json charset-norm</td><td class="mono" title="2be57ea90e66543b0b7454001e03461ba953231ca7415d19435ad1be2282dee1">2be57ea90e66</td></tr>
+    
+    <tr><td class="mono">E157</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>1.031</td>
+      <td class="mono">&lt;out&gt;\work\venvs\chardet-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-chardet-1-py3.12.json charset-norm</td><td class="mono" title="15b64693b004f7da1cd544065e2e7c4c8277a8cc75f92c78277103b7e9dff539">15b64693b004</td></tr>
+    
+    <tr><td class="mono">E158</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\chardet-1-py3.13\Scripts\python.exe</td><td class="mono" title="1cd74b65b77f4a732ca892f594123bc6969d4bf2773784463024171582482d15">1cd74b65b77f</td></tr>
+    
+    <tr><td class="mono">E159</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\chardet-1-py3.12\Scripts\python.exe</td><td class="mono" title="c5715e53755305ab3e64c5db6d783d18da7d73588fa1a8e1fb25feea529fc59e">c5715e537553</td></tr>
+    
+    <tr><td class="mono">E160</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.922</td>
+      <td class="mono">&lt;out&gt;\work\venvs\chardet-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="90eb545bbe91c2aae76e32709f400c5618a1d9c47cf964928449267c01fad805">90eb545bbe91</td></tr>
+    
+    <tr><td class="mono">E161</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>16.031</td>
+      <td class="mono">&lt;out&gt;\work\venvs\chardet-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\a</td><td class="mono" title="75cd59ce809296e522d6906f40078623303d08e971624b6f3e78e80bb902e9f8">75cd59ce8092</td></tr>
+    
+    <tr><td class="mono">E162</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\six-1-py3.13</td><td class="mono" title="23472581229afb006a45cb945e352d79e3646b7ba5d00b1b3ac70ebf063a6403">23472581229a</td></tr>
+    
+    <tr><td class="mono">E163</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.11</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\six-1-py3.12</td><td class="mono" title="6c87f15b037a5206763a41f337613d703636d161215dd51181163de649db2e2c">6c87f15b037a</td></tr>
+    
+    <tr><td class="mono">E164</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.203</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\six-1-py3.12\Scripts\python.exe -r &lt;out&gt;\work\attempts\six-1\requirements-dev.txt </td><td class="mono" title="6a212009ccd1252b3b0de5fc3ddf9012c8d4735b67bc4796dad80bcc769f4029">6a212009ccd1</td></tr>
+    
+    <tr><td class="mono">E165</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.218</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\six-1-py3.13\Scripts\python.exe -r &lt;out&gt;\work\attempts\six-1\requirements-dev.txt </td><td class="mono" title="206646c97b81614b341e8d1b693f22ee073d6541cfcf35c7532ccf7817291e5c">206646c97b81</td></tr>
+    
+    <tr><td class="mono">E166</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>0.594</td>
+      <td class="mono">&lt;out&gt;\work\venvs\six-1-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-six-1-py3.13.json </td><td class="mono" title="e3f8744d6a9f30786c47b5ec0580f4756add095263288018a7048e6b8eb53892">e3f8744d6a9f</td></tr>
+    
+    <tr><td class="mono">E167</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>0.61</td>
+      <td class="mono">&lt;out&gt;\work\venvs\six-1-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-six-1-py3.12.json </td><td class="mono" title="03812d3d8a1d9b7fb0bff75299f6a1a6a50371b85ab2f95bbc4b9d83e691177a">03812d3d8a1d</td></tr>
+    
+    <tr><td class="mono">E168</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.093</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\six-1-py3.13\Scripts\python.exe</td><td class="mono" title="3779a331e03156e88bb207af4813314a7fd9555e92fcf920e6e9905fd661b870">3779a331e031</td></tr>
+    
+    <tr><td class="mono">E169</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\six-1-py3.12\Scripts\python.exe</td><td class="mono" title="a85298db53485deecf456fc20c97c71d6e89164681ab392217237ada99e355fc">a85298db5348</td></tr>
+    
+    <tr><td class="mono">E170</td><td>test-run</td><td>3.13</td><td class="fail">1</td><td>14.938</td>
+      <td class="mono">&lt;out&gt;\work\venvs\six-1-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\attem</td><td class="mono" title="63b52f47b93941d2d6ac88197d06ce76c38d8669a9ea695fcff8467ec5ea9542">63b52f47b939</td></tr>
+    
+    <tr><td class="mono">E171</td><td>test-run</td><td>3.12</td><td class="fail">1</td><td>15.407</td>
+      <td class="mono">&lt;out&gt;\work\venvs\six-1-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\attem</td><td class="mono" title="b221a5bba9a1b3cb1ceb0c0e8d7d7c4f6ecd0633a8d0b7b2f27dc5e307f117f2">b221a5bba9a1</td></tr>
+    
+    <tr><td class="mono">E172</td><td>install</td><td>3.12</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.12 &lt;out&gt;\work\venvs\combined-py3.12</td><td class="mono" title="cfcf28017d5149712654d9ddd3ca9a781f370bb83bda1c10d597cc2619c70ed3">cfcf28017d51</td></tr>
+    
+    <tr><td class="mono">E173</td><td>install</td><td>3.13</td><td class="ok">0</td><td>0.109</td>
+      <td class="mono">~\.local\bin\uv.EXE venv --python 3.13 &lt;out&gt;\work\venvs\combined-py3.13</td><td class="mono" title="acfee7f2056d2d2eda8c058be12f309fc4da689622d7f76cbaad2fa1b7ac2d39">acfee7f2056d</td></tr>
+    
+    <tr><td class="mono">E174</td><td>install</td><td>3.13</td><td class="ok">0</td><td>1.656</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\combined-py3.13\Scripts\python.exe -r &lt;out&gt;\work\combined\requirements-dev.txt -r </td><td class="mono" title="00cca9bb966ff0998466230636c4dac405063c7b3ed19ddbb2bb3852588c4243">00cca9bb966f</td></tr>
+    
+    <tr><td class="mono">E175</td><td>install</td><td>3.12</td><td class="ok">0</td><td>1.672</td>
+      <td class="mono">~\.local\bin\uv.EXE pip install --python &lt;out&gt;\work\venvs\combined-py3.12\Scripts\python.exe -r &lt;out&gt;\work\combined\requirements-dev.txt -r </td><td class="mono" title="b3d2136c9911594af9233aced316d0822ea3d52d3e219703dfd6a53c0fabe7ff">b3d2136c9911</td></tr>
+    
+    <tr><td class="mono">E176</td><td>import-probe</td><td>3.13</td><td class="ok">0</td><td>7.625</td>
+      <td class="mono">&lt;out&gt;\work\venvs\combined-py3.13\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-combined-py3.13.json certifi,charse</td><td class="mono" title="f2c5a27a18f65425ee36ffb3a36653e36d4bc11a03b65f4deba1d06caf681926">f2c5a27a18f6</td></tr>
+    
+    <tr><td class="mono">E177</td><td>pip-check</td><td>3.13</td><td class="ok">0</td><td>0.094</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\combined-py3.13\Scripts\python.exe</td><td class="mono" title="5b426f666fbfa339decb2e68a45ce3bc9355d088e5ea8add81dcd7518e7c9912">5b426f666fbf</td></tr>
+    
+    <tr><td class="mono">E178</td><td>import-probe</td><td>3.12</td><td class="ok">0</td><td>8.563</td>
+      <td class="mono">&lt;out&gt;\work\venvs\combined-py3.12\Scripts\python.exe &lt;out&gt;\work\_doxops_probe\env_probe.py &lt;out&gt;\work\env-combined-py3.12.json certifi,charse</td><td class="mono" title="7bb11efc1472e8aad356f121ed50271523d689931de7c31620ab593888fb06f2">7bb11efc1472</td></tr>
+    
+    <tr><td class="mono">E179</td><td>pip-check</td><td>3.12</td><td class="ok">0</td><td>0.078</td>
+      <td class="mono">~\.local\bin\uv.EXE pip check --python &lt;out&gt;\work\venvs\combined-py3.12\Scripts\python.exe</td><td class="mono" title="eadf3b3bbb8190113914d59cfcd25356f6859360880952894b18ccda34e67960">eadf3b3bbb81</td></tr>
+    
+    <tr><td class="mono">E180</td><td>test-run</td><td>3.13</td><td class="ok">0</td><td>11.656</td>
+      <td class="mono">&lt;out&gt;\work\venvs\combined-py3.13\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\co</td><td class="mono" title="343f9cb9f138040afe928c3d37c5235f5e44d48013609777a2ca1d26ff059579">343f9cb9f138</td></tr>
+    
+    <tr><td class="mono">E181</td><td>test-run</td><td>3.12</td><td class="ok">0</td><td>11.016</td>
+      <td class="mono">&lt;out&gt;\work\venvs\combined-py3.12\Scripts\python.exe -m pytest -p doxops_probe -p no:cacheprovider -o addopts= -q -rA --rootdir &lt;out&gt;\work\co</td><td class="mono" title="b238e5c2ff89da3827bc7a63d30943aa6a0d520ae0435942aca25206ca728e51">b238e5c2ff89</td></tr>
+    
+  </table></div>
+</main>
+</body>
+</html>

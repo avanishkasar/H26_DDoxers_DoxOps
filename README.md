@@ -268,7 +268,9 @@ No model is trained or fine-tuned. No data leaves the machine in the default (Ol
 | `chardet` | 20 medium | Pinned two major versions behind; `charset-normalizer` is already installed through `requests`, which the plan prompt tells Gemma |
 | `six` | 20 medium | Declared, never used (still pulled in by `python-dateutil`) |
 
-These come from the tool's own run, not from a hand-written list: run `doxops scan` to reproduce them. The AI migration results depend on the model and hardware, so generate them with `doxops run` and read `REPORT.md`.
+These come from the tool's own run, not from a hand-written list: run `doxops scan` to reproduce them.
+
+**Real Gemma 4 run.** [`docs/sample-run/`](docs/sample-run/) holds the unedited `report.html` from `doxops run` on a laptop (`gemma4:e4b` through Ollama, RTX 4070, Python 3.12 and 3.13). Of the 11 flagged dependencies, 6 were verified on both Pythons (jinja2, requests, idna, certifi, chardet, six), 3 passed their tests with call sites the tests never reach, so they are only partially verified (pydantic, setuptools, appdirs), and 2 were not verified (nose, toml). All accepted migrations applied together fix the failing test with 0 regressions on both Pythons, across 181 logged commands. On toml, Gemma's `tomli` change broke a test (`File must be opened in binary mode`), and DoxOps rejected it instead of reporting a fix. Model output varies between runs, so your numbers can differ.
 
 ## Tech stack and dependencies
 
