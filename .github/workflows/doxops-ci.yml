@@ -2,9 +2,9 @@ name: doxops-ci
 
 on:
   push:
-    paths: ["doxops/**", "vscode-extension/**", ".github/workflows/doxops-ci.yml"]
+    paths: ["doxops/**", "vscode-extension/**", "browser-extension/**", ".github/workflows/doxops-ci.yml"]
   pull_request:
-    paths: ["doxops/**", "vscode-extension/**", ".github/workflows/doxops-ci.yml"]
+    paths: ["doxops/**", "vscode-extension/**", "browser-extension/**", ".github/workflows/doxops-ci.yml"]
 
 permissions:
   contents: read
@@ -43,5 +43,22 @@ jobs:
           cache: npm
           cache-dependency-path: vscode-extension/package-lock.json
       - run: npm ci
+      - run: npm test
+      - run: npm run package
+
+  browser-extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: browser-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-extension/package-lock.json
+      - run: npm ci
+      - run: npm run build
       - run: npm test
       - run: npm run package

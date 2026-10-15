@@ -27,7 +27,7 @@ Built during Hacktoberfest Hack Day Mumbai × ISTE KJSSE (15 October 2026) for *
 
 ## Contents
 
-[Problem](#problem) · [Solution](#solution) · [Quick start](#quick-start) · [Usage](#usage) · [VS Code extension](#vs-code-extension-find-and-fix-in-the-editor) · [Architecture](#architecture) · [The capsule](#the-dependency-exit-capsule) · [AI model details](#ai-model-details) · [What it finds in LinkWatch](#what-doxops-finds-in-linkwatch) · [Tech stack and dependencies](#tech-stack-and-dependencies) · [Research behind the design](#research-behind-the-design) · [Known limitations](#known-limitations) · [Disclosure](#disclosure-pre-existing-work-and-ai-usage)
+[Problem](#problem) · [Solution](#solution) · [Quick start](#quick-start) · [Usage](#usage) · [VS Code extension](#vs-code-extension-find-and-fix-in-the-editor) · [Dashboard](#local-dashboard-doxops-serve) · [Browser extension](#browser-extension-edge-and-chrome) · [Architecture](#architecture) · [The capsule](#the-dependency-exit-capsule) · [AI model details](#ai-model-details) · [What it finds in LinkWatch](#what-doxops-finds-in-linkwatch) · [Tech stack and dependencies](#tech-stack-and-dependencies) · [Research behind the design](#research-behind-the-design) · [Known limitations](#known-limitations) · [Disclosure](#disclosure-pre-existing-work-and-ai-usage)
 
 ---
 
@@ -166,6 +166,25 @@ code --install-extension .\doxops-0.2.0.vsix
 ```
 
 Settings (CLI path, provider, model, Python versions, max dependencies, output folder) are listed in [`vscode-extension/README.md`](vscode-extension/README.md).
+
+## Local dashboard (doxops serve)
+
+Run `doxops serve` and your browser opens http://127.0.0.1:8765. Paste a GitHub URL or an absolute local folder, then click **Find problems** (scan, no AI) or **Find and fix with Gemma 4** (full run). The log updates live; when the run ends you get the counts (at risk / verified / partially verified / unverified), a dependency table with OBSERVED / VERIFIED / AI badges, and links to the full report and patches. Run output goes to `doxops-out/web/<run-id>/`.
+
+Options: `--port`, `--out-root`, `--no-open`. The server runs project tests, so it binds to loopback only, rejects foreign Host and Origin headers, and refuses other addresses unless you pass `--allow-remote`. The JSON API and the UI brief for redesigning the page are in [`doxops/src/doxops/web/CODEX.md`](doxops/src/doxops/web/CODEX.md).
+
+## Browser extension (Edge and Chrome)
+
+[`browser-extension/`](browser-extension/) is **DoxOps for GitHub**, a Manifest V3 extension that flags at-risk Python dependencies on any public GitHub repository page from its manifests and PyPI (OBSERVED only, since a browser cannot run tests). The popup offers **Copy CLI command**, **Fix in VS Code** (clones and opens the repository; the DoxOps VS Code extension's Start panel then scans or fixes it) and **Load capsule.json**.
+
+```powershell
+cd browser-extension
+npm ci
+npm run package        # Node 22+; writes doxops-edge-0.1.0.zip
+# edge://extensions or chrome://extensions > Developer mode > Load unpacked > browser-extension\dist
+```
+
+Edge Add-ons submission steps, listing copy and store assets are in [`browser-extension/EDGE-PUBLISH.md`](browser-extension/EDGE-PUBLISH.md); the privacy policy is [`browser-extension/PRIVACY.md`](browser-extension/PRIVACY.md).
 
 ## Architecture
 
@@ -365,9 +384,9 @@ cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
 
 ## Disclosure: pre-existing work and AI usage
 
-- **Pre-existing code**: everything outside `doxops/`, `vscode-extension/`, `docs/`, `skills/`, `scripts/`, `.github/`, `.env.example`, the added `.gitignore` lines and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
-- **Written during the event**: the DoxOps package, the VS Code extension, tests, CI, Agent Skill, demo scripts and documentation.
-- **Third-party software**: click, rich, httpx, pydantic, packaging, jinja2, pytest, ruff, uv, TypeScript, @vscode/vsce, Ollama and Gemma 4, each under its own license.
+- **Pre-existing code**: everything outside `doxops/`, `vscode-extension/`, `browser-extension/`, `docs/`, `AGENTS.md`, `skills/`, `scripts/`, `.github/`, `.env.example`, the added `.gitignore` lines and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
+- **Written during the event**: the DoxOps package, the local dashboard, the VS Code and browser extensions, tests, CI, Agent Skill, demo scripts and documentation.
+- **Third-party software**: click, rich, httpx, pydantic, packaging, jinja2, pytest, ruff, uv, TypeScript, @vscode/vsce, esbuild, Ollama and Gemma 4, each under its own license.
 - **AI usage**: Gemma 4 is the runtime model inside DoxOps as described above. AI coding assistants were also used during development for drafting and review; the team reviewed, ran and tested the code.
 
 ## Team DDoxers
