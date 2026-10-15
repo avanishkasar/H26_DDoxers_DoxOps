@@ -1,0 +1,301 @@
+{
+  "name": "doxops",
+  "displayName": "DoxOps: Dependency Exit Capsules",
+  "description": "Find at-risk Python dependencies, plan their exit with Gemma 4, and apply only the fixes DoxOps verified by running your tests.",
+  "version": "0.1.0",
+  "publisher": "ddoxers",
+  "author": "Team DDoxers",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avanishkasar/H26_DDoxers_DoxOps"
+  },
+  "bugs": {
+    "url": "https://github.com/avanishkasar/H26_DDoxers_DoxOps/issues"
+  },
+  "homepage": "https://github.com/avanishkasar/H26_DDoxers_DoxOps#readme",
+  "keywords": [
+    "python",
+    "dependencies",
+    "security",
+    "migration",
+    "gemma"
+  ],
+  "categories": [
+    "Linters",
+    "Testing",
+    "Other"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/requirements*.txt",
+    "workspaceContains:**/pyproject.toml",
+    "workspaceContains:**/setup.py",
+    "workspaceContains:**/Pipfile"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "DoxOps installs the project's dependencies and runs its test suite, so it only runs in trusted workspaces."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "DoxOps needs a local folder to run the CLI and git."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "doxops.scan",
+        "title": "Scan Workspace (no AI)",
+        "category": "DoxOps",
+        "icon": "$(search)"
+      },
+      {
+        "command": "doxops.run",
+        "title": "Run with Gemma 4 (plan + verify)",
+        "category": "DoxOps",
+        "icon": "$(play)"
+      },
+      {
+        "command": "doxops.loadResults",
+        "title": "Load Results Folder...",
+        "category": "DoxOps",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "doxops.openReport",
+        "title": "Open Report",
+        "category": "DoxOps",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "doxops.openReportInBrowser",
+        "title": "Open Report in Browser",
+        "category": "DoxOps"
+      },
+      {
+        "command": "doxops.applyFix",
+        "title": "Apply Verified Fix...",
+        "category": "DoxOps",
+        "icon": "$(check)"
+      },
+      {
+        "command": "doxops.applyAll",
+        "title": "Apply All Verified Fixes (combined.patch)",
+        "category": "DoxOps",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "doxops.showCapsule",
+        "title": "Show Capsule",
+        "category": "DoxOps"
+      },
+      {
+        "command": "doxops.showOutput",
+        "title": "Show Output",
+        "category": "DoxOps",
+        "icon": "$(output)"
+      },
+      {
+        "command": "doxops.doctor",
+        "title": "Doctor (check git, uv, Python, Gemma 4)",
+        "category": "DoxOps"
+      },
+      {
+        "command": "doxops.setGeminiKey",
+        "title": "Set Gemini API Key",
+        "category": "DoxOps"
+      },
+      {
+        "command": "doxops.clearResults",
+        "title": "Clear Loaded Results",
+        "category": "DoxOps",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "doxops",
+          "title": "DoxOps",
+          "icon": "media/doxops.svg"
+        }
+      ]
+    },
+    "views": {
+      "doxops": [
+        {
+          "id": "doxops.dependencies",
+          "name": "DoxOps: Dependencies",
+          "contextualTitle": "DoxOps"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "doxops.dependencies",
+        "contents": "No DoxOps results are loaded.\n[Scan workspace](command:doxops.scan)\nRisk ranking only, no model needed.\n[Run with Gemma 4](command:doxops.run)\nPlan, verify and repair each at-risk dependency.\n[Load results](command:doxops.loadResults)\nOpen an existing DoxOps output folder.",
+        "when": "!doxops.hasResults"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "doxops.scan",
+          "when": "view == doxops.dependencies && !doxops.running",
+          "group": "navigation@1"
+        },
+        {
+          "command": "doxops.run",
+          "when": "view == doxops.dependencies && !doxops.running",
+          "group": "navigation@2"
+        },
+        {
+          "command": "doxops.openReport",
+          "when": "view == doxops.dependencies && doxops.hasResults",
+          "group": "navigation@3"
+        },
+        {
+          "command": "doxops.applyAll",
+          "when": "view == doxops.dependencies && doxops.hasCombinedPatch",
+          "group": "navigation@4"
+        },
+        {
+          "command": "doxops.loadResults",
+          "when": "view == doxops.dependencies",
+          "group": "more@1"
+        },
+        {
+          "command": "doxops.showOutput",
+          "when": "view == doxops.dependencies",
+          "group": "more@2"
+        },
+        {
+          "command": "doxops.clearResults",
+          "when": "view == doxops.dependencies && doxops.hasResults",
+          "group": "more@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "doxops.applyFix",
+          "when": "view == doxops.dependencies && viewItem == doxops.dependency.applicable",
+          "group": "inline"
+        },
+        {
+          "command": "doxops.applyFix",
+          "when": "view == doxops.dependencies && viewItem == doxops.dependency.applicable",
+          "group": "doxops@1"
+        },
+        {
+          "command": "doxops.showCapsule",
+          "when": "view == doxops.dependencies && viewItem =~ /^doxops\\.dependency/",
+          "group": "doxops@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "doxops.openReport",
+          "when": "doxops.hasResults"
+        },
+        {
+          "command": "doxops.openReportInBrowser",
+          "when": "doxops.hasResults"
+        },
+        {
+          "command": "doxops.applyFix",
+          "when": "doxops.hasResults"
+        },
+        {
+          "command": "doxops.applyAll",
+          "when": "doxops.hasCombinedPatch"
+        },
+        {
+          "command": "doxops.showCapsule",
+          "when": "doxops.hasResults"
+        },
+        {
+          "command": "doxops.clearResults",
+          "when": "doxops.hasResults"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DoxOps",
+      "properties": {
+        "doxops.executable": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Path to the `doxops` CLI. Empty: auto-detect `doxops` on `PATH`, then `doxops/.venv` and `.venv` inside the workspace folder."
+        },
+        "doxops.provider": {
+          "type": "string",
+          "enum": [
+            "ollama",
+            "gemini"
+          ],
+          "enumDescriptions": [
+            "Gemma 4 running locally in Ollama.",
+            "Hosted Gemma 4 through the Gemini API (needs GEMINI_API_KEY)."
+          ],
+          "default": "ollama",
+          "description": "Where Gemma 4 runs for 'DoxOps: Run with Gemma 4'."
+        },
+        "doxops.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model id passed as `--model`. Empty: the CLI default (`gemma4:e4b` for Ollama, `gemma-4-26b-a4b-it` for Gemini)."
+        },
+        "doxops.pythons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+          },
+          "default": [
+            "3.12",
+            "3.13"
+          ],
+          "description": "Python versions DoxOps verifies on (each becomes --python X.Y)."
+        },
+        "doxops.maxDeps": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "markdownDescription": "Migrate at most N highest-risk dependencies (`--max-deps`). `0` means every at-risk dependency."
+        },
+        "doxops.outputDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Folder that receives one `<timestamp>` subfolder per run. Empty: the extension's private storage, so nothing is written into the workspace. A relative path is resolved against the workspace folder. A folder inside the workspace must be under `doxops-out` or `.doxops` (for example `doxops-out`), because the CLI copies the workspace and skips only those folders."
+        },
+        "doxops.ollamaHost": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Ollama URL passed to the CLI as `OLLAMA_HOST`. Empty: leave the environment unchanged."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node scripts/run-tests.mjs",
+    "package": "vsce package --no-dependencies",
+    "icon": "node scripts/make-icon.mjs media/icon.png"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "~5.9.3"
+  }
+}
