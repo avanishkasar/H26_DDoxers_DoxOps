@@ -1,0 +1,1509 @@
+{
+  "$defs": {
+    "CandidateVetting": {
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "title": "Package",
+          "type": "string"
+        },
+        "exists_on_index": {
+          "title": "Exists On Index",
+          "type": "boolean"
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Version"
+        },
+        "project_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Status"
+        },
+        "supports_target_python": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supports Target Python"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "package",
+        "exists_on_index"
+      ],
+      "title": "CandidateVetting",
+      "type": "object"
+    },
+    "CodeEdit": {
+      "description": "A minimal search-and-replace edit proposed by the model.",
+      "properties": {
+        "file": {
+          "description": "Repository-relative path of the file to change",
+          "title": "File",
+          "type": "string"
+        },
+        "find": {
+          "description": "Exact existing text to replace; must occur exactly once",
+          "title": "Find",
+          "type": "string"
+        },
+        "replace": {
+          "description": "Replacement text",
+          "title": "Replace",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "description": "Why this edit is needed",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "find",
+        "replace"
+      ],
+      "title": "CodeEdit",
+      "type": "object"
+    },
+    "Comparison": {
+      "additionalProperties": false,
+      "properties": {
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "fixed": {
+          "default": 0,
+          "title": "Fixed",
+          "type": "integer"
+        },
+        "regressed": {
+          "default": 0,
+          "title": "Regressed",
+          "type": "integer"
+        },
+        "still_failing": {
+          "default": 0,
+          "title": "Still Failing",
+          "type": "integer"
+        },
+        "still_passing": {
+          "default": 0,
+          "title": "Still Passing",
+          "type": "integer"
+        },
+        "new": {
+          "default": 0,
+          "title": "New",
+          "type": "integer"
+        },
+        "removed": {
+          "default": 0,
+          "title": "Removed",
+          "type": "integer"
+        },
+        "deltas": {
+          "items": {
+            "$ref": "#/$defs/TestDelta"
+          },
+          "title": "Deltas",
+          "type": "array"
+        },
+        "warnings_before": {
+          "default": 0,
+          "title": "Warnings Before",
+          "type": "integer"
+        },
+        "warnings_after": {
+          "default": 0,
+          "title": "Warnings After",
+          "type": "integer"
+        },
+        "dependency_warnings_before": {
+          "default": 0,
+          "title": "Dependency Warnings Before",
+          "type": "integer"
+        },
+        "dependency_warnings_after": {
+          "default": 0,
+          "title": "Dependency Warnings After",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "python"
+      ],
+      "title": "Comparison",
+      "type": "object"
+    },
+    "DependencyRisk": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "declared": {
+          "title": "Declared",
+          "type": "boolean"
+        },
+        "imported_modules": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Imported Modules",
+          "type": "array"
+        },
+        "score": {
+          "title": "Score",
+          "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "at_risk": {
+          "title": "At Risk",
+          "type": "boolean"
+        },
+        "indicators": {
+          "items": {
+            "$ref": "#/$defs/RiskIndicator"
+          },
+          "title": "Indicators",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "declared",
+        "imported_modules",
+        "score",
+        "severity",
+        "at_risk",
+        "indicators"
+      ],
+      "title": "DependencyRisk",
+      "type": "object"
+    },
+    "EditOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "applied": {
+          "title": "Applied",
+          "type": "boolean"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "file",
+        "applied"
+      ],
+      "title": "EditOutcome",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "provenance"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "ImportProbe": {
+      "additionalProperties": false,
+      "properties": {
+        "distribution": {
+          "title": "Distribution",
+          "type": "string"
+        },
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "strict_ok": {
+          "title": "Strict Ok",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "strict_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strict Error"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "distribution",
+        "module",
+        "ok",
+        "strict_ok"
+      ],
+      "title": "ImportProbe",
+      "type": "object"
+    },
+    "LLMCall": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "title": "Prompt Sha256",
+          "type": "string"
+        },
+        "prompt_path": {
+          "title": "Prompt Path",
+          "type": "string"
+        },
+        "response_path": {
+          "title": "Response Path",
+          "type": "string"
+        },
+        "latency_s": {
+          "title": "Latency S",
+          "type": "number"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "attempt": {
+          "default": 1,
+          "title": "Attempt",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "purpose",
+        "prompt_sha256",
+        "prompt_path",
+        "response_path",
+        "latency_s",
+        "ok"
+      ],
+      "title": "LLMCall",
+      "type": "object"
+    },
+    "MigrationAttempt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MigrationPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "llm_call": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LLMCall"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vetting": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateVetting"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "edits": {
+          "items": {
+            "$ref": "#/$defs/EditOutcome"
+          },
+          "title": "Edits",
+          "type": "array"
+        },
+        "manifest_changes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Manifest Changes",
+          "type": "array"
+        },
+        "syntax_ok": {
+          "default": true,
+          "title": "Syntax Ok",
+          "type": "boolean"
+        },
+        "runs": {
+          "items": {
+            "$ref": "#/$defs/SuiteRun"
+          },
+          "title": "Runs",
+          "type": "array"
+        },
+        "comparisons": {
+          "items": {
+            "$ref": "#/$defs/Comparison"
+          },
+          "title": "Comparisons",
+          "type": "array"
+        },
+        "accepted": {
+          "default": false,
+          "title": "Accepted",
+          "type": "boolean"
+        },
+        "verdict": {
+          "default": "",
+          "title": "Verdict",
+          "type": "string"
+        },
+        "patch_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Patch Path"
+        }
+      },
+      "required": [
+        "attempt",
+        "plan",
+        "llm_call"
+      ],
+      "title": "MigrationAttempt",
+      "type": "object"
+    },
+    "MigrationPlan": {
+      "description": "Exactly what the model must return. Kept flat so small models can follow it.",
+      "properties": {
+        "analysis": {
+          "description": "Two to five sentences: what is wrong and why it matters",
+          "title": "Analysis",
+          "type": "string"
+        },
+        "replacement": {
+          "$ref": "#/$defs/ReplacementChoice"
+        },
+        "rationale": {
+          "description": "Why this replacement over the alternatives",
+          "title": "Rationale",
+          "type": "string"
+        },
+        "alternatives_considered": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Alternatives Considered",
+          "type": "array"
+        },
+        "migration_steps": {
+          "description": "Ordered human-readable steps",
+          "items": {
+            "type": "string"
+          },
+          "title": "Migration Steps",
+          "type": "array"
+        },
+        "edits": {
+          "items": {
+            "$ref": "#/$defs/CodeEdit"
+          },
+          "title": "Edits",
+          "type": "array"
+        },
+        "suggested_tests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Suggested Tests",
+          "type": "array"
+        },
+        "expected_compatibility_gaps": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Compatibility Gaps",
+          "type": "array"
+        },
+        "confidence": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis",
+        "replacement",
+        "rationale",
+        "migration_steps"
+      ],
+      "title": "MigrationPlan",
+      "type": "object"
+    },
+    "PackageMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "found": {
+          "title": "Found",
+          "type": "boolean"
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Version"
+        },
+        "latest_release_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Release At"
+        },
+        "pinned_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned Version"
+        },
+        "pinned_release_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned Release At"
+        },
+        "pinned_yanked": {
+          "default": false,
+          "title": "Pinned Yanked",
+          "type": "boolean"
+        },
+        "pinned_yanked_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned Yanked Reason"
+        },
+        "requires_python": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requires Python"
+        },
+        "pinned_requires_python": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned Requires Python"
+        },
+        "classifiers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Classifiers",
+          "type": "array"
+        },
+        "python_classifiers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Python Classifiers",
+          "type": "array"
+        },
+        "project_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Status"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "deprecation_phrases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deprecation Phrases",
+          "type": "array"
+        },
+        "homepage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Homepage"
+        },
+        "repository": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repository"
+        },
+        "release_count": {
+          "default": 0,
+          "title": "Release Count",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "name",
+        "found"
+      ],
+      "title": "PackageMetadata",
+      "type": "object"
+    },
+    "Provenance": {
+      "enum": [
+        "observed",
+        "verified",
+        "ai"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "ReplacementChoice": {
+      "properties": {
+        "strategy": {
+          "description": "upgrade = same package newer version; replace = different package; stdlib = use the Python standard library; remove = delete unused dependency; declare = add a missing declaration; keep = no change recommended",
+          "enum": [
+            "upgrade",
+            "replace",
+            "stdlib",
+            "remove",
+            "declare",
+            "keep"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Distribution name to depend on afterwards, null for stdlib/remove",
+          "title": "Package"
+        },
+        "version_spec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PEP 440 specifier, e.g. '>=3.1.6,<4'",
+          "title": "Version Spec"
+        },
+        "stdlib_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Standard library module when strategy=stdlib",
+          "title": "Stdlib Module"
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "title": "ReplacementChoice",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "raw": {
+          "title": "Raw",
+          "type": "string"
+        },
+        "specifier": {
+          "default": "",
+          "title": "Specifier",
+          "type": "string"
+        },
+        "pinned_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned Version"
+        },
+        "extras": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Extras",
+          "type": "array"
+        },
+        "marker": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker"
+        },
+        "source_file": {
+          "title": "Source File",
+          "type": "string"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "section": {
+          "default": "dependencies",
+          "title": "Section",
+          "type": "string"
+        },
+        "commented_out": {
+          "default": false,
+          "title": "Commented Out",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "raw",
+        "source_file"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "RiskIndicator": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "weight": {
+          "title": "Weight",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "title",
+        "detail",
+        "weight",
+        "provenance"
+      ],
+      "title": "RiskIndicator",
+      "type": "object"
+    },
+    "RuntimeCall": {
+      "additionalProperties": false,
+      "description": "A call from project code into a dependency, recorded while tests ran.",
+      "properties": {
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "function": {
+          "title": "Function",
+          "type": "string"
+        },
+        "caller_file": {
+          "title": "Caller File",
+          "type": "string"
+        },
+        "caller_line": {
+          "title": "Caller Line",
+          "type": "integer"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "module",
+        "function",
+        "caller_file",
+        "caller_line",
+        "count"
+      ],
+      "title": "RuntimeCall",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SuiteRun": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "install_ok": {
+          "title": "Install Ok",
+          "type": "boolean"
+        },
+        "install_evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Install Evidence"
+        },
+        "test_evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Evidence"
+        },
+        "collected": {
+          "default": 0,
+          "title": "Collected",
+          "type": "integer"
+        },
+        "tests": {
+          "items": {
+            "$ref": "#/$defs/TestResult"
+          },
+          "title": "Tests",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/WarningRecord"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "runtime_calls": {
+          "items": {
+            "$ref": "#/$defs/RuntimeCall"
+          },
+          "title": "Runtime Calls",
+          "type": "array"
+        },
+        "import_probes": {
+          "items": {
+            "$ref": "#/$defs/ImportProbe"
+          },
+          "title": "Import Probes",
+          "type": "array"
+        },
+        "pip_check_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pip Check Ok"
+        },
+        "pip_check_evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pip Check Evidence"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "label",
+        "python",
+        "install_ok"
+      ],
+      "title": "SuiteRun",
+      "type": "object"
+    },
+    "TestDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeid": {
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "before": {
+          "title": "Before",
+          "type": "string"
+        },
+        "after": {
+          "title": "After",
+          "type": "string"
+        },
+        "change": {
+          "enum": [
+            "fixed",
+            "regressed",
+            "still-failing",
+            "still-passing",
+            "new",
+            "removed"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "after_message": {
+          "default": "",
+          "title": "After Message",
+          "type": "string"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Class"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanation"
+        }
+      },
+      "required": [
+        "nodeid",
+        "python",
+        "before",
+        "after",
+        "change"
+      ],
+      "title": "TestDelta",
+      "type": "object"
+    },
+    "TestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeid": {
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "passed",
+            "failed",
+            "error",
+            "skipped",
+            "xfailed",
+            "xpassed"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "duration_s": {
+          "default": 0.0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Class"
+        },
+        "frames": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Frames",
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodeid",
+        "outcome"
+      ],
+      "title": "TestResult",
+      "type": "object"
+    },
+    "UsageSite": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "line": {
+          "title": "Line",
+          "type": "integer"
+        },
+        "col": {
+          "default": 0,
+          "title": "Col",
+          "type": "integer"
+        },
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Symbol"
+        },
+        "kind": {
+          "enum": [
+            "import",
+            "from-import",
+            "attribute",
+            "call",
+            "private-api",
+            "monkeypatch",
+            "tool-command",
+            "runtime-call"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "snippet": {
+          "default": "",
+          "title": "Snippet",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "observed"
+        }
+      },
+      "required": [
+        "file",
+        "line",
+        "module",
+        "kind"
+      ],
+      "title": "UsageSite",
+      "type": "object"
+    },
+    "WarningRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "lineno": {
+          "title": "Lineno",
+          "type": "integer"
+        },
+        "attributed_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attributed To"
+        },
+        "count": {
+          "default": 1,
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "category",
+        "message",
+        "filename",
+        "lineno"
+      ],
+      "title": "WarningRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The Dependency Exit Capsule for one dependency.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "dependency": {
+      "title": "Dependency",
+      "type": "string"
+    },
+    "declarations": {
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "title": "Declarations",
+      "type": "array"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PackageMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "risk": {
+      "$ref": "#/$defs/DependencyRisk"
+    },
+    "usage": {
+      "items": {
+        "$ref": "#/$defs/UsageSite"
+      },
+      "title": "Usage",
+      "type": "array"
+    },
+    "runtime_usage": {
+      "items": {
+        "$ref": "#/$defs/RuntimeCall"
+      },
+      "title": "Runtime Usage",
+      "type": "array"
+    },
+    "proposed_replacement": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Fact"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "analysis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Fact"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "migration_steps": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Migration Steps",
+      "type": "array"
+    },
+    "suggested_tests": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Suggested Tests",
+      "type": "array"
+    },
+    "attempts": {
+      "items": {
+        "$ref": "#/$defs/MigrationAttempt"
+      },
+      "title": "Attempts",
+      "type": "array"
+    },
+    "executed_results": {
+      "items": {
+        "$ref": "#/$defs/Comparison"
+      },
+      "title": "Executed Results",
+      "type": "array"
+    },
+    "compatibility_gaps": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Compatibility Gaps",
+      "type": "array"
+    },
+    "open_concerns": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Open Concerns",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "verified",
+        "partially-verified",
+        "unverified",
+        "not-attempted",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "dependency",
+    "declarations",
+    "metadata",
+    "risk",
+    "usage",
+    "runtime_usage",
+    "proposed_replacement",
+    "analysis",
+    "migration_steps",
+    "suggested_tests",
+    "attempts",
+    "executed_results",
+    "compatibility_gaps",
+    "open_concerns",
+    "status"
+  ],
+  "title": "DependencyCapsule",
+  "type": "object"
+}

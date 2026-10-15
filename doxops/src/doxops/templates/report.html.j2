@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoxOps report</title>
+<style>
+  :root { --bg:#0b0f17; --panel:#121826; --line:#243044; --text:#e6eaf2; --muted:#93a0b6;
+          --obs:#3b82f6; --ver:#22c55e; --ai:#f59e0b; --bad:#ef4444; --mid:#eab308; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f7f8fb; --panel:#ffffff; --line:#dfe4ee; --text:#151b28; --muted:#5b667a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 32px 0 12px; } h3 { font-size: 15px; margin: 18px 0 8px; }
+  .muted { color: var(--muted); } code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .kpi { font-size: 26px; font-weight: 650; }
+  table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; border: 1px solid; white-space: nowrap; }
+  .b-observed { color: var(--obs); border-color: var(--obs); } .b-verified { color: var(--ver); border-color: var(--ver); } .b-ai { color: var(--ai); border-color: var(--ai); }
+  .sev-critical, .sev-high { color: var(--bad); } .sev-medium { color: var(--mid); } .sev-low, .sev-none { color: var(--muted); }
+  .bar { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--mid), var(--bad)); }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
+  summary { cursor: pointer; padding: 12px 14px; font-weight: 600; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  details > div { padding: 0 14px 14px; }
+  ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+  .ok { color: var(--ver); } .fail { color: var(--bad); }
+  .table-wrap { overflow-x: auto; }
+  .legend span { margin-right: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DoxOps · Dependency Exit Capsules</h1>
+  <div class="muted">Target <code>{{ s.target.source }}</code> @ <code>{{ (s.target.commit or "n/a")[:12] }}</code> · Python {{ s.target.pythons | join(", ") }} · generated {{ s.generated_at.strftime("%Y-%m-%d %H:%M UTC") }}
+  {% if s.model %} · model <code>{{ s.model.model }}</code> via {{ s.model.provider }}{% endif %}</div>
+  <p class="legend muted"><span class="badge b-observed">OBSERVED</span> read from repo or PyPI
+    <span class="badge b-verified">VERIFIED</span> proven by an executed command
+    <span class="badge b-ai">AI</span> Gemma 4 output, not proven</p>
+
+  {% set at_risk = s.risks | selectattr("at_risk") | list %}
+  {% set verified = s.capsules | selectattr("status", "equalto", "verified") | list %}
+  <div class="grid">
+    <div class="card"><div class="muted">Dependencies analysed</div><div class="kpi">{{ s.risks | length }}</div></div>
+    <div class="card"><div class="muted">At risk</div><div class="kpi sev-high">{{ at_risk | length }}</div></div>
+    <div class="card"><div class="muted">Migrations verified</div><div class="kpi ok">{{ verified | length }} / {{ s.capsules | length }}</div></div>
+    <div class="card"><div class="muted">Commands executed</div><div class="kpi">{{ s.evidence | length }}</div></div>
+  </div>
+
+  {% if actions %}
+  <h2>Next actions</h2>
+  <div class="card"><ol>{% for a in actions %}<li>{{ a | replace("`", "") }}</li>{% endfor %}</ol></div>
+  {% endif %}
+
+  <h2>Baseline test run (original dependencies)</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Python</th><th>Install</th><th>Passed</th><th>Failed</th><th>Warnings</th><th>Evidence</th></tr>
+    {% for r in s.baseline %}{% set c = r.counts() %}
+    <tr><td>{{ r.python }}</td><td class="{{ 'ok' if r.install_ok else 'fail' }}">{{ "ok" if r.install_ok else "failed" }}</td>
+      <td>{{ c.get("passed", 0) }}</td><td class="{{ 'fail' if c.get('failed', 0) + c.get('error', 0) else '' }}">{{ c.get("failed", 0) + c.get("error", 0) }}</td>
+      <td>{{ r.warnings | sum(attribute="count") }}</td><td class="mono">{{ r.install_evidence }} {{ r.test_evidence }}</td></tr>
+    {% endfor %}
+  </table></div>
+
+  {% if s.combined_comparisons %}
+  <h2>All accepted migrations applied together</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th></tr>
+    {% for c in s.combined_comparisons %}
+    <tr><td>{{ c.python }}</td><td class="ok">{{ c.fixed }}</td><td class="{{ 'fail' if c.regressed else '' }}">{{ c.regressed }}</td><td>{{ c.still_failing }}</td><td>{{ c.still_passing }}</td></tr>
+    {% endfor %}
+  </table><p class="muted">Patch: <code>{{ s.combined_patch }}</code> · migrated tree in <code>migrated-repo/</code></p></div>
+  {% endif %}
+
+  <h2>Risk ranking</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Dependency</th><th>Score</th><th></th><th>Severity</th><th>Indicators</th></tr>
+    {% for r in s.risks %}
+    <tr><td><code>{{ r.name }}</code></td><td>{{ r.score }}</td><td><div class="bar"><span style="width: {{ r.score }}%"></span></div></td>
+      <td class="sev-{{ r.severity.value }}">{{ r.severity.value }}</td>
+      <td>{% for i in r.indicators | sort(attribute="weight", reverse=True) %}<span class="badge b-{{ i.provenance.value }}" title="{{ i.detail }}">{{ i.code }}</span> {% endfor %}</td></tr>
+    {% endfor %}
+  </table></div>
+
+  <h2>Capsules</h2>
+  {% for c in s.capsules %}
+  <details {% if loop.first %}open{% endif %}>
+    <summary><code>{{ c.dependency }}</code>
+      <span class="sev-{{ c.risk.severity.value }}">risk {{ c.risk.score }}</span>
+      <span class="badge {{ 'b-verified' if c.status == 'verified' else ('b-ai' if c.status in ('unverified', 'partially-verified') else 'b-observed') }}">{{ c.status }}</span>
+      {% if c.proposed_replacement %}<span class="muted">{{ c.proposed_replacement.text.split(". ")[0] }}</span>{% endif %}
+    </summary>
+    <div>
+      <h3>Risk indicators</h3>
+      <ul>{% for i in c.risk.indicators %}<li><span class="badge b-{{ i.provenance.value }}">{{ badge[i.provenance] }}</span> <b>{{ i.title }}</b> <span class="muted">(+{{ i.weight }})</span><br><span class="muted">{{ i.detail }}</span>{% if i.evidence_ids %} <code>{{ i.evidence_ids | join(", ") }}</code>{% endif %}</li>{% endfor %}</ul>
+      <h3>Usage locations</h3>
+      <ul>{% for u in c.usage[:40] %}<li><span class="badge b-observed">OBSERVED</span> <code>{{ u.file }}:{{ u.line }}</code> {{ u.kind }} <strong>{{ u.symbol or u.module }}</strong> <code>{{ u.snippet }}</code></li>{% endfor %}
+        {% for r in c.runtime_usage[:20] %}<li><span class="badge b-verified">VERIFIED</span> runtime <code>{{ r.caller_file }}:{{ r.caller_line }}</code> → <code>{{ r.module }}.{{ r.function }}</code> ×{{ r.count }}</li>{% endfor %}</ul>
+      {% if c.analysis %}<h3>Analysis</h3><p><span class="badge b-ai">AI</span> {{ c.analysis.text }}</p>{% endif %}
+      <h3>Proposed replacement</h3>
+      {% if c.proposed_replacement %}<p><span class="badge b-{{ c.proposed_replacement.provenance.value }}">{{ badge[c.proposed_replacement.provenance] }}</span> {{ c.proposed_replacement.text }}</p>{% else %}<p class="muted">Not attempted.</p>{% endif %}
+      {% if c.migration_steps %}<h3>Migration steps</h3><ol>{% for f in c.migration_steps %}<li>{{ f.text }}</li>{% endfor %}</ol>{% endif %}
+      {% if c.suggested_tests %}<h3>Suggested tests</h3><ul>{% for f in c.suggested_tests %}<li><span class="badge b-ai">AI</span> {{ f.text }}</li>{% endfor %}</ul>{% endif %}
+      <h3>Executed test results</h3>
+      {% if c.executed_results %}<div class="table-wrap"><table><tr><th>Python</th><th>Fixed</th><th>Regressed</th><th>Still failing</th><th>Still passing</th><th>Dep. warnings</th></tr>
+        {% for r in c.executed_results %}<tr><td>{{ r.python }}</td><td class="ok">{{ r.fixed }}</td><td class="{{ 'fail' if r.regressed else '' }}">{{ r.regressed }}</td><td>{{ r.still_failing }}</td><td>{{ r.still_passing }}</td><td>{{ r.dependency_warnings_before }} → {{ r.dependency_warnings_after }}</td></tr>{% endfor %}
+      </table></div>{% else %}<p class="muted">No migration tests executed.</p>{% endif %}
+      <h3>Attempts</h3>
+      <ul>{% for a in c.attempts %}<li>#{{ a.attempt }} {{ a.verdict }}{% if a.patch_path %} · <code>{{ a.patch_path }}</code>{% endif %}</li>{% else %}<li class="muted">None</li>{% endfor %}</ul>
+      <h3>Compatibility gaps</h3>
+      <ul>{% for f in c.compatibility_gaps %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% else %}<li class="muted">None observed in executed tests.</li>{% endfor %}</ul>
+      <h3>Open concerns and limitations</h3>
+      <ul>{% for f in c.open_concerns %}<li><span class="badge b-{{ f.provenance.value }}">{{ badge[f.provenance] }}</span> {{ f.text }}</li>{% else %}<li class="muted">None.</li>{% endfor %}</ul>
+    </div>
+  </details>
+  {% endfor %}
+
+  {% if inventory %}
+  <h2>Dependency inventory</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Package</th>{% for r in s.baseline %}<th>py{{ r.python }}</th>{% endfor %}<th>Kind</th><th>Required by</th></tr>
+    {% for row in inventory %}
+    <tr><td><code>{{ row.name }}</code></td>{% for r in s.baseline %}<td>{{ row.versions.get(r.python, "-") }}</td>{% endfor %}
+      <td>{{ "direct" if row.direct else "transitive" }}</td><td>{{ row.required_by | join(", ") or "-" }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+
+  <h2>Limitations</h2>
+  <div class="card"><ul>{% for l in s.limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>
+
+  <h2>Evidence log</h2>
+  <div class="card table-wrap"><table>
+    <tr><th>Id</th><th>Kind</th><th>Python</th><th>Exit</th><th>Seconds</th><th>Command</th><th>SHA-256</th></tr>
+    {% for e in s.evidence %}
+    <tr><td class="mono">{{ e.id }}</td><td>{{ e.kind }}</td><td>{{ e.python or "-" }}</td><td class="{{ 'ok' if e.exit_code == 0 else 'fail' }}">{{ e.exit_code if e.exit_code is not none else "timeout" }}</td><td>{{ e.duration_s }}</td>
+      <td class="mono">{{ (e.command | join(" "))[:140] }}</td><td class="mono" title="{{ e.log_sha256 }}">{{ e.log_sha256[:12] }}</td></tr>
+    {% endfor %}
+  </table></div>
+</main>
+</body>
+</html>
