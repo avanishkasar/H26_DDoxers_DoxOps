@@ -2,7 +2,7 @@
   "name": "doxops",
   "displayName": "DoxOps: Dependency Exit Capsules",
   "description": "Find at-risk Python dependencies, plan their exit with Gemma 4, and apply only the fixes DoxOps verified by running your tests.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "ddoxers",
   "author": "Team DDoxers",
   "license": "MIT",
@@ -60,6 +60,16 @@
         "title": "Run with Gemma 4 (plan + verify)",
         "category": "DoxOps",
         "icon": "$(play)"
+      },
+      {
+        "command": "doxops.scanRepo",
+        "title": "Find Problems in a GitHub Repository or Folder...",
+        "category": "DoxOps"
+      },
+      {
+        "command": "doxops.fixRepo",
+        "title": "Find and Fix a GitHub Repository or Folder with Gemma 4...",
+        "category": "DoxOps"
       },
       {
         "command": "doxops.loadResults",
@@ -129,6 +139,12 @@
     },
     "views": {
       "doxops": [
+        {
+          "type": "webview",
+          "id": "doxops.home",
+          "name": "Start",
+          "contextualTitle": "DoxOps"
+        },
         {
           "id": "doxops.dependencies",
           "name": "DoxOps: Dependencies",

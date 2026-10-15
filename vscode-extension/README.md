@@ -7,6 +7,11 @@ running your tests.
 
 ## What it does
 
+- **Start panel** in the DoxOps sidebar: paste a GitHub URL (`https://github.com/rishrek/LinkWatch`) or a folder path,
+  or leave it empty for the open folder, then click **Find problems** (scan, no AI) or **Find and fix with Gemma 4**.
+  GitHub repositories are cloned into the extension's own storage first. The panel also holds the provider, model,
+  Python versions and CLI path, and shows the results: counts, the combined test result, and every at-risk dependency
+  with its reason and replacement labelled OBSERVED, VERIFIED or AI, plus **Details** and **Apply fix** links.
 - **DoxOps view** in the activity bar: every dependency ranked by risk score, with its indicators,
   usage sites (click to jump to the line), proposed replacement, every migration attempt
   (accepted or rejected, with the verdict) and the executed test results per Python version.
@@ -74,7 +79,7 @@ or `uv pip install -e ./doxops`), git, and for `Run with Gemma 4` either Ollama 
 model or a Gemini API key.
 
 ```powershell
-code --install-extension doxops-0.1.0.vsix
+code --install-extension doxops-0.2.0.vsix
 ```
 
 The extension only runs in trusted workspaces, because DoxOps installs your dependencies and
@@ -86,7 +91,7 @@ runs your test suite.
 Set-Location vscode-extension
 npm ci
 npm test            # compiles with tsc and runs the unit tests (node:test)
-npm run package     # writes doxops-0.1.0.vsix
+npm run package     # writes doxops-0.2.0.vsix
 ```
 
 `npm run watch` recompiles on change; press F5 in VS Code with this folder open to start an

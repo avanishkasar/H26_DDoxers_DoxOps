@@ -1201,3 +1201,112 @@ export function truncate(text: string, max: number): string {
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length <= max ? flat : flat.slice(0, Math.max(0, max - 1)) + "…";
 }
+
+// ------------------------------------------------------------------------------------------ targets
+
+export type ScanTarget =
+  | { readonly kind: "workspace" }
+  | { readonly kind: "github"; readonly owner: string; readonly repo: string; readonly cloneUrl: string }
+  | { readonly kind: "path"; readonly path: string }
+  | { readonly kind: "invalid"; readonly reason: string };
+
+const GITHUB_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})$/;
+
+/**
+ * What the user typed in the DoxOps panel: empty means the open workspace, a GitHub repository
+ * URL (https, optionally ending in .git or a /tree/... path) means clone it, and an absolute
+ * path means that folder on disk. Anything else is rejected rather than guessed.
+ */
+export function parseTarget(input: string): ScanTarget {
+  const text = input.trim();
+  if (text.length === 0) {
+    return { kind: "workspace" };
+  }
+  const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)\/([^/\s#?]+?)(?:\.git)?(?:\/(?:tree|blob)\/[^\s]*)?\/?(?:[#?][^\s]*)?$/i.exec(text);
+  if (gh) {
+    const owner = gh[1] ?? "";
+    const repo = gh[2] ?? "";
+    if (!GITHUB_NAME.test(owner) || !GITHUB_NAME.test(repo) || repo === "." || repo === "..") {
+      return { kind: "invalid", reason: `"${text}" is not a valid GitHub repository URL.` };
+    }
+    return { kind: "github", owner, repo, cloneUrl: `https://github.com/${owner}/${repo}.git` };
+  }
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) {
+    return { kind: "invalid", reason: "Only GitHub repository URLs (https://github.com/owner/repo) can be cloned." };
+  }
+  const isAbsolute = text.startsWith("/") || /^[A-Za-z]:[\\/]/.test(text) || text.startsWith("\\\\");
+  if (!isAbsolute) {
+    return { kind: "invalid", reason: "Enter a GitHub URL (https://github.com/owner/repo) or an absolute folder path." };
+  }
+  return { kind: "path", path: text };
+}
+
+/** Folder name used for a clone kept in the extension's storage. */
+export function cloneFolderName(owner: string, repo: string): string {
+  return `${owner}__${repo}`.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+export interface PanelDependency {
+  readonly name: string;
+  readonly score: number;
+  readonly severity: Severity;
+  readonly status: CapsuleStatus;
+  readonly reason: string;
+  readonly reasonLabel: string;
+  readonly replacement: string;
+  readonly replacementLabel: string;
+  readonly applicable: boolean;
+}
+
+export interface PanelSummary {
+  readonly kind: ResultsKind;
+  readonly target: string;
+  readonly model: string;
+  readonly pythons: readonly string[];
+  readonly analysed: number;
+  readonly atRisk: number;
+  readonly verified: number;
+  readonly partiallyVerified: number;
+  readonly unverified: number;
+  readonly applicable: number;
+  readonly fixedTogether: number | null;
+  readonly regressedTogether: number | null;
+  readonly dependencies: readonly PanelDependency[];
+}
+
+/** A plain, JSON-safe digest of the results for the DoxOps panel (it renders text only). */
+export function panelSummary(summary: RunSummary): PanelSummary {
+  const counts = countResults(summary);
+  const dependencies = sortCapsules(summary.capsules)
+    .filter((c) => isAtRisk(c))
+    .map((c): PanelDependency => {
+      const top = topIndicator(c);
+      return {
+        name: c.dependency,
+        score: c.risk.score,
+        severity: c.risk.severity,
+        status: c.status,
+        reason: top ? top.title : "",
+        reasonLabel: top ? provenanceLabel(top.provenance) : "",
+        replacement: c.proposedReplacement ? c.proposedReplacement.text : "",
+        replacementLabel: c.proposedReplacement ? provenanceLabel(c.proposedReplacement.provenance) : "",
+        applicable: selectPatch(c).ok,
+      };
+    });
+  const combined = summary.combinedResults;
+  return {
+    kind: summary.kind,
+    target: summary.targetSource,
+    model: summary.model ? `${summary.model.model} via ${summary.model.provider}` : "",
+    pythons: summary.pythons,
+    analysed: summary.capsules.length,
+    atRisk: counts.atRisk,
+    verified: counts.verified,
+    partiallyVerified: counts.partiallyVerified,
+    unverified: summary.capsules.filter((c) => c.status === "unverified" || c.status === "failed").length,
+    applicable: counts.applicable,
+    fixedTogether: combined.length > 0 ? Math.max(...combined.map((r) => r.fixed)) : null,
+    regressedTogether: combined.length > 0 ? Math.max(...combined.map((r) => r.regressed)) : null,
+    dependencies,
+  };
+}

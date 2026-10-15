@@ -150,6 +150,7 @@ doxops-out/<run>/
 
 [`vscode-extension/`](vscode-extension/) is **DoxOps for VS Code**. It drives the CLI from the editor and puts the capsule where you work:
 
+- **Start panel**: paste any GitHub URL or folder path (or use the open folder) and click **Find problems** or **Find and fix with Gemma 4**. GitHub repositories are cloned first; the panel shows the counts, the combined test result and every at-risk dependency with its labelled reason, replacement and an **Apply fix** link.
 - **Squiggles where the risk is**: a diagnostic on the line that declares each at-risk dependency (`requirements*.txt`, `pyproject.toml`, `setup.py`, `Pipfile`) and on every usage site, for example `DoxOps: jinja2 at risk (score 85): import jinja2 fails on Python 3.12, 3.13 [VERIFIED]`.
 - **DoxOps sidebar**: dependencies ranked by score, each with its indicators, usage sites (click to jump), Gemma's proposal, every attempt with its verdict, and the test results per Python version, all with their OBSERVED / VERIFIED / AI label.
 - **Quick fix: apply verified fix**: runs `git apply --check`, shows the replacement, status and labels in a confirm dialog, then `git apply`s the patch DoxOps proved. Only `verified` and `partially-verified` capsules can be applied (the latter with a warning listing the open concerns); a patch that is already applied is never applied twice. **Apply All** uses `patches/combined.patch` and is offered only when the combined test run regressed nothing and no conflicts were recorded.
@@ -160,8 +161,8 @@ It spawns the CLI without a shell, writes runs to the extension's private storag
 ```powershell
 cd vscode-extension
 npm ci
-npm run package                                  # builds doxops-0.1.0.vsix
-code --install-extension .\doxops-0.1.0.vsix
+npm run package                                  # builds doxops-0.2.0.vsix
+code --install-extension .\doxops-0.2.0.vsix
 ```
 
 Settings (CLI path, provider, model, Python versions, max dependencies, output folder) are listed in [`vscode-extension/README.md`](vscode-extension/README.md).

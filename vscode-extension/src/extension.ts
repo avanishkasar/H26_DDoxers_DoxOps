@@ -11,9 +11,12 @@ import {
   buildRunArgs,
   buildScanArgs,
   CapsuleFormatError,
+  cloneFolderName,
   countResults,
   injectCsp,
   outputDirInsideWorkspaceIsSafe,
+  panelSummary,
+  parseTarget,
   partialWarningDetail,
   runTimestamp,
   selectCombinedPatch,
@@ -33,10 +36,13 @@ import {
   type LoadedResults,
 } from "./results";
 import { CLI_NOT_FOUND, ExecutableNotFoundError, resolveExecutable, runProcess, type ProcessResult } from "./runner";
+import { DoxOpsPanel, type PanelMessage, type PanelState } from "./panel";
 import { DependencyTreeProvider, isDependencyNode, type Node } from "./tree";
 
 const SECRET_KEY = "doxops.geminiApiKey";
 const STATE_KEY = "doxops.lastResults";
+/** folder URI -> output folder of its latest run, so a repository opened in a new window shows its results. */
+const GLOBAL_RESULTS_KEY = "doxops.resultsByFolder";
 
 interface PersistedResults {
   readonly outDir: string;
@@ -53,8 +59,14 @@ class DoxOpsExtension implements vscode.Disposable {
   private results: LoadedResults | null = null;
   private running = false;
   private reportPanel: vscode.WebviewPanel | null = null;
+  private readonly panel: DoxOpsPanel;
 
   constructor(private readonly context: vscode.ExtensionContext) {
+    this.panel = new DoxOpsPanel(
+      context.extensionUri,
+      () => this.panelState(),
+      (m) => void this.guard(`panel.${m.type}`, () => this.handlePanel(m)),
+    );
     this.treeView = vscode.window.createTreeView("doxops.dependencies", {
       treeDataProvider: this.tree,
       showCollapseAll: true,
@@ -67,6 +79,15 @@ class DoxOpsExtension implements vscode.Disposable {
       this.tree,
       this.treeView,
       this.statusBar,
+      this.panel,
+      vscode.window.registerWebviewViewProvider(DoxOpsPanel.viewId, this.panel, {
+        webviewOptions: { retainContextWhenHidden: true },
+      }),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("doxops")) {
+          this.panel.refresh();
+        }
+      }),
       vscode.languages.registerCodeActionsProvider(
         [{ scheme: "file" }],
         new DoxOpsCodeActions(() => this.results),
@@ -76,6 +97,8 @@ class DoxOpsExtension implements vscode.Disposable {
     const commands: Record<string, (...args: unknown[]) => unknown> = {
       "doxops.scan": () => this.runCli("scan"),
       "doxops.run": () => this.runCli("run"),
+      "doxops.scanRepo": () => this.promptTarget("scan"),
+      "doxops.fixRepo": () => this.promptTarget("run"),
       "doxops.loadResults": () => this.pickAndLoadResults(),
       "doxops.openReport": () => this.openReport(),
       "doxops.openReportInBrowser": () => this.openReportInBrowser(),
@@ -113,18 +136,226 @@ class DoxOpsExtension implements vscode.Disposable {
     }
   }
 
-  private setContext(key: string, value: boolean): Thenable<unknown> {
-    return vscode.commands.executeCommand("setContext", key, value);
+  private async setContext(key: string, value: boolean): Promise<void> {
+    await vscode.commands.executeCommand("setContext", key, value);
+    this.panel.refresh();
+  }
+
+  // ---------------------------------------------------------------------------------- panel
+
+  private panelState(): PanelState {
+    const first = vscode.workspace.workspaceFolders?.[0];
+    const cfg = vscode.workspace.getConfiguration("doxops", first?.uri);
+    const pythons = cfg.get<unknown>("pythons");
+    const folder = this.results?.folder;
+    return {
+      running: this.running,
+      target: "",
+      workspaceName: first ? first.name : null,
+      provider: cfg.get<string>("provider", "ollama") === "gemini" ? "gemini" : "ollama",
+      model: cfg.get<string>("model", "") ?? "",
+      pythons: Array.isArray(pythons) ? pythons.filter((x): x is string => typeof x === "string") : ["3.12", "3.13"],
+      executable: cfg.get<string>("executable", "") ?? "",
+      summary: this.results ? panelSummary(this.results.summary) : null,
+      openableFolder: folder && !this.isOpenFolder(folder) ? folder.uri.fsPath : null,
+    };
+  }
+
+  private isOpenFolder(folder: vscode.WorkspaceFolder): boolean {
+    return (vscode.workspace.workspaceFolders ?? []).some((f) => f.uri.toString() === folder.uri.toString());
+  }
+
+  private async handlePanel(m: PanelMessage): Promise<void> {
+    switch (m.type) {
+      case "scan":
+      case "run":
+        return this.runTarget(m.type, m.target);
+      case "load":
+        return this.pickAndLoadResults();
+      case "report":
+        return this.openReport();
+      case "doctor":
+        return this.doctor();
+      case "setKey":
+        await this.setGeminiKey();
+        return;
+      case "applyAll":
+        return this.applyAll();
+      case "apply":
+        return this.applyFix(m.dependency);
+      case "capsule":
+        return this.showCapsule(m.dependency);
+      case "output":
+        this.output.show(true);
+        return;
+      case "openFolder": {
+        const folder = this.results?.folder;
+        if (folder) {
+          await vscode.commands.executeCommand("vscode.openFolder", folder.uri, { forceNewWindow: true });
+        }
+        return;
+      }
+      case "browseCli": {
+        const picked = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          openLabel: "Use this DoxOps CLI",
+          title: "Select the doxops executable (for example doxops\\.venv\\Scripts\\doxops.exe)",
+        });
+        const file = picked?.[0];
+        if (file) {
+          await vscode.workspace.getConfiguration("doxops").update("executable", file.fsPath, vscode.ConfigurationTarget.Global);
+        }
+        return;
+      }
+      case "settings": {
+        const cfg = vscode.workspace.getConfiguration("doxops");
+        const { valid } = validPythons(m.pythons);
+        await cfg.update("provider", m.provider === "gemini" ? "gemini" : "ollama", vscode.ConfigurationTarget.Global);
+        await cfg.update("model", m.model.trim(), vscode.ConfigurationTarget.Global);
+        if (valid.length > 0) {
+          await cfg.update("pythons", valid, vscode.ConfigurationTarget.Global);
+        }
+        return;
+      }
+      case "ready":
+        this.panel.refresh();
+        return;
+    }
+  }
+
+  private async promptTarget(mode: "scan" | "run"): Promise<void> {
+    const value = await vscode.window.showInputBox({
+      title: mode === "scan" ? "DoxOps: find problems in a repository" : "DoxOps: find and fix a repository with Gemma 4",
+      prompt: "GitHub URL (https://github.com/owner/repo) or an absolute folder path. Leave empty for the open folder.",
+      placeHolder: "https://github.com/rishrek/LinkWatch",
+      ignoreFocusOut: true,
+    });
+    if (value !== undefined) {
+      await this.runTarget(mode, value);
+    }
+  }
+
+  /** Scan or fix what the user named: the open folder, a folder on disk, or a GitHub repository (cloned first). */
+  private async runTarget(mode: "scan" | "run", input: string): Promise<void> {
+    const target = parseTarget(input);
+    switch (target.kind) {
+      case "invalid":
+        void vscode.window.showErrorMessage(`DoxOps: ${target.reason}`);
+        return;
+      case "workspace":
+        if ((vscode.workspace.workspaceFolders ?? []).length === 0) {
+          void vscode.window.showWarningMessage("DoxOps: no folder is open. Paste a GitHub URL or a folder path in the DoxOps panel.");
+          return;
+        }
+        return this.runCli(mode);
+      case "path": {
+        const stat = await fs.stat(target.path).catch(() => null);
+        if (!stat?.isDirectory()) {
+          void vscode.window.showErrorMessage(`DoxOps: ${target.path} is not a folder.`);
+          return;
+        }
+        return this.runCli(mode, this.folderFor(vscode.Uri.file(target.path), path.basename(target.path)));
+      }
+      case "github": {
+        const dir = await this.cloneRepo(target.owner, target.repo, target.cloneUrl);
+        if (dir) {
+          return this.runCli(mode, this.folderFor(vscode.Uri.file(dir), `${target.owner}/${target.repo}`));
+        }
+        return;
+      }
+    }
+  }
+
+  /** The open workspace folder for this URI if there is one, otherwise a stand-in outside the workspace. */
+  private folderFor(uri: vscode.Uri, name: string): vscode.WorkspaceFolder {
+    const open = vscode.workspace.getWorkspaceFolder(uri);
+    if (open && open.uri.toString() === uri.toString()) {
+      return open;
+    }
+    return { uri, name, index: -1 };
+  }
+
+  /** Clone (or reuse) a GitHub repository under the extension's global storage. */
+  private async cloneRepo(owner: string, repo: string, cloneUrl: string): Promise<string | null> {
+    const base = path.join(this.context.globalStorageUri.fsPath, "repos");
+    const dir = path.join(base, cloneFolderName(owner, repo));
+    await fs.mkdir(base, { recursive: true });
+    if (await fileExists(path.join(dir, ".git"))) {
+      const choice = await vscode.window.showInformationMessage(
+        `DoxOps already has a copy of ${owner}/${repo}.`,
+        { modal: true, detail: `${dir}\n\nKeep it to see the effect of fixes you applied, or start again from a fresh clone.` },
+        "Use Existing Copy",
+        "Fresh Clone",
+      );
+      if (choice === "Use Existing Copy") {
+        return dir;
+      }
+      if (choice !== "Fresh Clone") {
+        return null;
+      }
+      await fs.rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } else {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+    if (this.running) {
+      void vscode.window.showWarningMessage("DoxOps is already running; wait for it or cancel it first.");
+      return null;
+    }
+    this.output.show(true);
+    this.output.appendLine("");
+    this.output.appendLine(`$ git clone --depth 1 ${cloneUrl} ${dir}`);
+    const result = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `DoxOps: cloning ${owner}/${repo}`, cancellable: true },
+      (_progress, token) =>
+        runProcess("git", ["clone", "--depth", "1", "--", cloneUrl, dir], {
+          cwd: base,
+          env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+          output: { append: (t) => this.output.append(t) },
+          cancel: token,
+        }),
+    ).then(
+      (r) => r,
+      (err: unknown) => {
+        if (err instanceof ExecutableNotFoundError) {
+          void vscode.window.showErrorMessage("DoxOps: git is not installed or not on PATH.");
+          return null;
+        }
+        throw err;
+      },
+    );
+    if (!result) {
+      return null;
+    }
+    if (result.cancelled || result.code !== 0) {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+      if (!result.cancelled) {
+        const choice = await vscode.window.showErrorMessage(
+          `DoxOps: could not clone ${owner}/${repo} (is it public, and is the URL right?).`,
+          "Show Output",
+        );
+        if (choice === "Show Output") {
+          this.output.show(true);
+        }
+      }
+      return null;
+    }
+    return dir;
   }
 
   // ---------------------------------------------------------------------------------- results
 
   async restore(): Promise<void> {
-    const saved = this.context.workspaceState.get<PersistedResults>(STATE_KEY);
+    const saved = this.context.workspaceState.get<PersistedResults>(STATE_KEY) ?? this.globalResultsForOpenFolder();
     if (!saved || typeof saved.outDir !== "string" || typeof saved.folder !== "string") {
       return;
     }
-    const folder = vscode.workspace.workspaceFolders?.find((f) => f.uri.toString() === saved.folder);
+    const folder =
+      vscode.workspace.workspaceFolders?.find((f) => f.uri.toString() === saved.folder) ??
+      ((await fs.stat(vscode.Uri.parse(saved.folder).fsPath).then((st) => st.isDirectory(), () => false))
+        ? this.folderFor(vscode.Uri.parse(saved.folder), path.basename(vscode.Uri.parse(saved.folder).fsPath))
+        : undefined);
     if (!folder || !(await fileExists(path.join(saved.outDir, "capsule.json")))) {
       return;
     }
@@ -133,6 +364,17 @@ class DoxOpsExtension implements vscode.Disposable {
     } catch (err) {
       this.output.appendLine(`Could not restore the last DoxOps results: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  private globalResultsForOpenFolder(): PersistedResults | undefined {
+    const map = this.context.globalState.get<Record<string, string>>(GLOBAL_RESULTS_KEY) ?? {};
+    for (const f of vscode.workspace.workspaceFolders ?? []) {
+      const outDir = map[f.uri.toString()];
+      if (typeof outDir === "string") {
+        return { outDir, folder: f.uri.toString() };
+      }
+    }
+    return undefined;
   }
 
   private async setResults(results: LoadedResults | null): Promise<void> {
@@ -148,6 +390,7 @@ class DoxOpsExtension implements vscode.Disposable {
     if (!results) {
       this.statusBar.hide();
       await this.context.workspaceState.update(STATE_KEY, undefined);
+      this.panel.refresh();
       return;
     }
     const counts = countResults(results.summary);
@@ -156,6 +399,10 @@ class DoxOpsExtension implements vscode.Disposable {
     this.statusBar.show();
     const persisted: PersistedResults = { outDir: results.outDir, folder: results.folder.uri.toString() };
     await this.context.workspaceState.update(STATE_KEY, persisted);
+    const map = { ...(this.context.globalState.get<Record<string, string>>(GLOBAL_RESULTS_KEY) ?? {}) };
+    map[persisted.folder] = persisted.outDir;
+    await this.context.globalState.update(GLOBAL_RESULTS_KEY, map);
+    this.panel.refresh();
     const byFile = await computeDiagnostics(results);
     for (const [uri, diags] of byFile.values()) {
       this.diagnostics.set(uri, diags);
@@ -226,9 +473,13 @@ class DoxOpsExtension implements vscode.Disposable {
       `DoxOps ${results.summary.kind} ${verb}: ${counts.atRisk} at risk, ${counts.verified} verified` +
       (counts.partiallyVerified > 0 ? `, ${counts.partiallyVerified} partially verified` : "") +
       (results.summary.kind === "scan" ? " (scan only: no AI plans)." : ".");
-    void vscode.window.showInformationMessage(text, "Open Report").then((c) => {
+    const external = !this.isOpenFolder(results.folder);
+    const actions = external ? ["Open Report", "Open Repository"] : ["Open Report"];
+    void vscode.window.showInformationMessage(text, ...actions).then((c) => {
       if (c === "Open Report") {
         void this.guard("doxops.openReport", () => this.openReport());
+      } else if (c === "Open Repository") {
+        void vscode.commands.executeCommand("vscode.openFolder", results.folder.uri, { forceNewWindow: true });
       }
     });
     void vscode.commands.executeCommand("workbench.view.extension.doxops");
@@ -313,6 +564,17 @@ class DoxOpsExtension implements vscode.Disposable {
     try {
       return await resolveExecutable(setting, folder.uri.fsPath);
     } catch (err) {
+      if (err instanceof ExecutableNotFoundError && setting.trim().length === 0) {
+        // Scanning a clone or another folder: the CLI may live in an open folder (this repository's doxops/.venv).
+        for (const open of vscode.workspace.workspaceFolders ?? []) {
+          if (open.uri.toString() !== folder.uri.toString()) {
+            const found = await resolveExecutable("", open.uri.fsPath).catch(() => null);
+            if (found) {
+              return found;
+            }
+          }
+        }
+      }
       if (err instanceof ExecutableNotFoundError) {
         await this.cliNotFound(err.message);
         return null;
@@ -381,12 +643,12 @@ class DoxOpsExtension implements vscode.Disposable {
     }
   }
 
-  private async runCli(mode: "scan" | "run"): Promise<void> {
+  private async runCli(mode: "scan" | "run", chosen?: vscode.WorkspaceFolder): Promise<void> {
     if (!vscode.workspace.isTrusted) {
       void vscode.window.showWarningMessage("DoxOps runs your project's tests, so it needs a trusted workspace.");
       return;
     }
-    const folder = await this.pickFolder(mode === "scan" ? "Folder to scan" : "Folder to migrate with Gemma 4");
+    const folder = chosen ?? (await this.pickFolder(mode === "scan" ? "Folder to scan" : "Folder to migrate with Gemma 4"));
     if (!folder) {
       return;
     }
