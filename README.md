@@ -39,7 +39,7 @@ DoxOps connects AI-assisted analysis to repository inspection and execution:
 
 | Challenge requirement | How DoxOps does it | Label in capsule |
 |---|---|---|
-| 1. Identify at-risk dependencies from repository and dependency metadata | 21 explainable indicators ([list](#risk-indicators)) from requirement files, `pyproject.toml`, Makefile/Dockerfile/CI, PyPI JSON + Simple API (PEP 792 status), import probes and the baseline test run | OBSERVED / VERIFIED |
+| 1. Identify at-risk dependencies from repository and dependency metadata | 22 explainable indicators ([list](#risk-indicators)) from requirement files, `pyproject.toml`, Makefile/Dockerfile/CI, PyPI JSON + Simple API (PEP 792 status), import probes and the baseline test run | OBSERVED / VERIFIED |
 | 2. Find where and how **all** of them are used | AST scan (imports, aliased calls, attribute chains, private API, monkeypatching), console-script references in build files, and a runtime call trace of the test suite | OBSERVED / VERIFIED |
 | 3. Propose a replacement and migration for **all** of them | Gemma 4 returns a schema-constrained plan (strategy, package, version spec, steps, minimal edits, tests, expected gaps); DoxOps vets the package on PyPI to catch hallucinations | AI |
 | 4. Execute tests on original and replacement | Fresh `uv` virtualenvs per attempt on every target Python, pytest with a probe plugin, per-test outcomes | VERIFIED |
@@ -93,17 +93,29 @@ Copy `.env.example` to `.env` to change the model, the Ollama host or to use the
 
 `TARGET` is a git URL or a local folder and defaults to `https://github.com/rishrek/LinkWatch`.
 
+Options for both `scan` and `run`:
+
 | Option | Default | Purpose |
 |---|---|---|
 | `--python` | `3.12 --python 3.13` | Python versions to verify on (repeatable) |
+| `--out DIR` | `doxops-out/<timestamp>` | Output folder |
+| `--exclude DIR` | `doxops` | Top-level folders to ignore when scanning the target (repeatable) |
+| `--ref REF` | default branch | Branch or tag to clone when `TARGET` is a URL |
+| `--offline-index` | off | Use only cached PyPI metadata (no network lookups) |
+| `--keep-envs` | off | Keep virtualenvs and attempt trees for inspection |
+| `--fail-on LEVEL` | off | Exit code 3 if any dependency reaches `low`/`medium`/`high`/`critical` (CI gate) |
+
+Options for `run` only:
+
+| Option | Default | Purpose |
+|---|---|---|
 | `--provider` | `ollama` | `ollama` (local) or `gemini` (hosted Gemma 4 through the Gemini API) |
 | `--model` | `gemma4:e4b` / `gemma-4-26b-a4b-it` | Model id |
-| `--only DIST` | all at-risk | Migrate only these dependencies (repeatable) |
-| `--max-deps N` | all | Migrate the N highest-risk dependencies |
+| `--only DIST` | every at-risk dependency | Migrate only these dependencies (repeatable); the others still get a `not-attempted` capsule |
+| `--max-deps N` | every at-risk dependency | Migrate the N highest-risk dependencies; the others still get a `not-attempted` capsule |
 | `--max-repairs N` | `2` | Repair rounds after a failed verification |
-| `--fail-on LEVEL` | off | Exit code 3 if any dependency reaches `low`/`medium`/`high`/`critical` (CI gate) |
-| `--out DIR` | `doxops-out/<timestamp>` | Output folder |
-| `--keep-envs` | off | Keep virtualenvs and attempt trees for inspection |
+
+`doxops run` checks that Ollama is reachable and the model is pulled before it starts, and stops with the fix if not.
 
 Typical demo:
 
@@ -140,7 +152,7 @@ flowchart LR
     W --> B["Baseline sandbox<br/>uv venv per Python<br/>import probes + pytest probe"]
     B --> RT["Runtime call trace<br/>+ per-test outcomes<br/>+ warnings"]
     P["PyPI JSON + Simple API<br/>(PEP 792 status)"] --> R
-    M --> R["Risk engine<br/>21 weighted indicators"]
+    M --> R["Risk engine<br/>22 weighted indicators"]
     U --> R
     RT --> R
     R -->|at-risk deps| G["Gemma 4 planner<br/>schema-constrained JSON"]
@@ -173,7 +185,8 @@ flowchart LR
 - **No whole-file rewrites**: edits are find/replace pairs that must match exactly once, so the model cannot silently drop code.
 - **Manifests are ours**: the model chooses a strategy and version spec; DoxOps rewrites every declaration itself and validates the PEP 440 specifier.
 - **Hallucination check**: the proposed package must exist on PyPI, not be quarantined/archived, and have a release matching the spec, before anything is installed.
-- **Integrity guard**: tests cannot be edited to make a runtime migration pass.
+- **Integrity guard**: tests and test-harness files (`conftest.py`, `pytest.ini`, `tox.ini`, `noxfile.py`) cannot be edited to make a runtime migration pass, and a test that passed before but is skipped afterwards counts as a regression.
+- **AI stays labelled AI**: once a plan passes, only the executed choice (strategy, package, version spec) becomes VERIFIED; Gemma's analysis, rationale, steps and suggested tests keep the AI label.
 - **Residual check**: after `replace`/`stdlib`/`remove`, any leftover import or build-file command of the old dependency rejects the attempt.
 - **Acceptance rule**: install succeeds on every Python, zero regressions against the baseline, every edit applied, and the new package imports cleanly.
 
@@ -198,11 +211,12 @@ Each indicator adds its weight once (the score is capped at 100). A dependency i
 | `UNDECLARED` | 20 | OBSERVED | Imported but only installed transitively |
 | `UNUSED` | 20 | OBSERVED | Declared but never imported, called or invoked |
 | `IMPORT_DEPRECATED` | 15 | VERIFIED | Import raises with deprecation warnings turned into errors |
-| `OUTDATED_PIN` | 5 / 15 | OBSERVED | Exact pin behind latest / a major version behind |
+| `OUTDATED_PIN` | 5 / 15 / 20 | OBSERVED | Exact pin behind latest / one major version behind / two or more |
 | `MANIFEST_DRIFT` | 15 | OBSERVED | Declared with different constraints in different files |
 | `PRIVATE_API` | 15 | OBSERVED | Uses `_private` names that can change without notice |
 | `RUNTIME_DEPRECATION` | 10 | VERIFIED | Deprecation warnings attributed to it during the test run |
 | `MONKEYPATCH` | 10 | OBSERVED | The project patches the library globally |
+| `NO_TIMEOUT` | 10 | OBSERVED | `requests` calls (module-level or on a `Session`) without `timeout=`: they can hang, and a client with a default timeout changes behaviour |
 | `PYTHON_CLASSIFIERS_OLD` | 5 | OBSERVED | Latest release advertises only older Python versions |
 
 ## The Dependency Exit Capsule
@@ -243,12 +257,13 @@ No model is trained or fine-tuned. No data leaves the machine in the default (Ol
 | `jinja2` | 85 critical | VERIFIED `import jinja2` fails (`soft_unicode` removed from MarkupSafe); `test_report` fails; pinned 2.11.3 |
 | `nose` | 85 critical | VERIFIED `import nose` fails (`imp` removed in 3.12); Makefile `nosetests` target broken; no release since 2015 |
 | `pydantic` | 55 high | VERIFIED v1 emits a deprecation on Python 3.13 that becomes an error in 3.15; requirements pin v1 while pyproject asks for v2 |
-| `setuptools` | 40 high | VERIFIED `pkg_resources` deprecation at import and during tests; `setuptools==75.8.0` is pinned as a runtime dependency |
+| `setuptools` | 45 high | VERIFIED `pkg_resources` deprecation at import and during tests; `setuptools==75.8.0` is pinned as a runtime dependency |
+| `requests` | 40 high | Private `requests.utils._parse_content_type_header`, a global monkeypatch of `Session.request`, and `session.get(url)` in `checker.py` with no timeout (so the `Timeout` handler can never fire) |
 | `idna` | 35 medium | Pinned to 2018's 2.7 but never imported |
 | `appdirs`, `toml` | 30 medium | No release for 6 years; Python classifiers stop at 3.8 and 3.9 |
-| `requests` | 30 medium | Private `requests.utils._parse_content_type_header` and a global monkeypatch of `Session.request` |
 | `certifi` | 20 medium | Imported in `checker.py` but never declared |
-| `six` | 20 medium | Declared, never used |
+| `chardet` | 20 medium | Pinned two major versions behind; `charset-normalizer` is already installed through `requests`, which the plan prompt tells Gemma |
+| `six` | 20 medium | Declared, never used (still pulled in by `python-dateutil`) |
 
 These come from the tool's own run, not from a hand-written list: run `doxops scan` to reproduce them. The AI migration results depend on the model and hardware, so generate them with `doxops run` and read `REPORT.md`.
 
@@ -284,6 +299,11 @@ uv pip install -e ".[dev]"
 .venv\Scripts\ruff check src tests
 ```
 
+```bash
+cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
+.venv/bin/python -m pytest && .venv/bin/ruff check src tests
+```
+
 ## Research behind the design
 
 | Source | Insight | Where it shows up |
@@ -303,11 +323,13 @@ uv pip install -e ".[dev]"
 - Migrations are verified one at a time and then together; interactions between two accepted plans that touch the same lines are reported in `patches/combined-conflicts.txt`, not resolved automatically.
 - Only Python projects with requirement files or `pyproject.toml` and a pytest-compatible suite are supported.
 - PyPI-derived signals (age, classifiers, wording) are heuristics. Package metadata and installs need network access to PyPI.
+- Two libraries doing the same job (for example `chardet` next to `charset-normalizer`) are not scored as redundant by themselves; DoxOps gives Gemma the list of packages already installed through other dependencies so a plan can prefer one of them.
+- `NO_TIMEOUT` only knows `requests`; other HTTP clients without a default timeout are not checked.
 - Security vulnerabilities are out of scope for this challenge and are not scored.
 
 ## Disclosure: pre-existing work and AI usage
 
-- **Pre-existing code**: everything outside `doxops/`, `skills/`, `scripts/`, `.github/` and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
+- **Pre-existing code**: everything outside `doxops/`, `skills/`, `scripts/`, `.github/`, `.env.example`, the added `.gitignore` lines and this README is the organizer-provided LinkWatch starter (MIT), kept unchanged so DoxOps can be run against it. Its original README is in [`LINKWATCH.md`](LINKWATCH.md).
 - **Written during the event**: the DoxOps package, tests, CI, Agent Skill, demo scripts and documentation.
 - **Third-party software**: click, rich, httpx, pydantic, packaging, jinja2, pytest, ruff, uv, Ollama and Gemma 4, each under its own license.
 - **AI usage**: Gemma 4 is the runtime model inside DoxOps as described above. AI coding assistants were also used during development for drafting and review; the team reviewed, ran and tested the code.

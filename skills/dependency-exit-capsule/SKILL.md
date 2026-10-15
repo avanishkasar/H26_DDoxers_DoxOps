@@ -17,8 +17,8 @@ Use the DoxOps CLI. Never edit dependencies by hand first: let DoxOps collect ev
 1. Check the toolchain: `doxops doctor` (add `--provider gemini` for the hosted API). Stop and report any FAIL line.
 2. Scan without AI to see the risk ranking: `doxops scan <repo-url-or-path> --out doxops-out/scan`.
    Read `doxops-out/scan/REPORT.md`.
-3. Plan and verify migrations: `doxops run <repo> --max-deps 6 --out doxops-out/run`
-   (use `--only <dist>` to focus on one dependency).
+3. Plan and verify migrations for every at-risk dependency: `doxops run <repo> --out doxops-out/run`
+   (use `--only <dist>` to focus on one dependency; skipped ones still get a `not-attempted` capsule).
 4. Report back from `doxops-out/run/REPORT.md` and the per-dependency files in `doxops-out/run/capsules/`:
    - Quote **VERIFIED** facts with their evidence ids (logs live in `evidence/`).
    - Present **AI** items as proposals, never as facts.
