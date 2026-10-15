@@ -229,14 +229,14 @@ Each capsule contains every field the challenge lists, in this order:
 1. Dependency details (declarations with file:line, pinned and latest versions with dates, PyPI status)
 2. Risk indicators (weight, provenance, evidence ids)
 3. Usage locations (static sites and runtime calls)
-4. Proposed replacement (AI until verified, then VERIFIED with evidence ids)
+4. Proposed replacement (AI until verified, then VERIFIED with evidence ids; Gemma's rationale stays AI)
 5. Migration steps
 6. Suggested tests
 7. Executed test results (per Python: fixed, regressed, still failing, warning deltas; every attempt with its verdict and patch)
 8. Compatibility gaps (verified regressions with failure category and explanation, plus gaps the model expects)
-9. Open concerns and limitations (unapplied edits, vetting notes, usage sites never reached by the tests, low model confidence)
+9. Open concerns and limitations (unapplied edits, vetting notes, usage sites never reached by the tests, standard-library replacements newer than the project's lowest supported Python, crashed migrations, low model confidence)
 
-Capsule `status` is `verified`, `partially-verified` (accepted but tests that failed because of this dependency still fail), `unverified` (no attempt passed), `failed` (no usable plan) or `not-attempted` (scan only). The JSON Schema is in [`doxops/schema/capsule.schema.json`](doxops/schema/capsule.schema.json) so other tools can consume capsules.
+Capsule `status` is `verified`, `partially-verified` (accepted, but tests that failed because of this dependency still fail, none of its call sites ran during the tests, or a standard-library replacement may be missing on an older Python the project supports), `unverified` (no attempt passed), `failed` (no usable plan, or the migration crashed) or `not-attempted` (scan only, or left out by `--only` / `--max-deps`). The JSON Schema is in [`doxops/schema/capsule.schema.json`](doxops/schema/capsule.schema.json) so other tools can consume capsules.
 
 ## AI model details
 
@@ -330,6 +330,8 @@ cd doxops && uv venv -p 3.12 .venv && uv pip install -e ".[dev]"
 - PyPI-derived signals (age, classifiers, wording) are heuristics. Package metadata and installs need network access to PyPI.
 - Two libraries doing the same job (for example `chardet` next to `charset-normalizer`) are not scored as redundant by themselves; DoxOps gives Gemma the list of packages already installed through other dependencies so a plan can prefer one of them.
 - `NO_TIMEOUT` only knows `requests`; other HTTP clients without a default timeout are not checked.
+- Verification runs on the Python versions given with `--python` (3.12 and 3.13 by default, as LinkWatch requires). Older versions a project still declares in `requires-python` are not executed; for standard-library replacements this is flagged in the capsule.
+- The runtime call trace sees calls into Python code only; calls into compiled extensions are invisible, and lines in class bodies or decorators run at import time, so they are not counted as unreached.
 - The environment is installed from the requirement files when they exist, so a second install path (for LinkWatch, `pip install .` with `pydantic>=2` from `pyproject.toml`) is reported as `MANIFEST_DRIFT` but not executed.
 - Security vulnerabilities are out of scope for this challenge and are not scored.
 
