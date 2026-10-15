@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Explore DoxOps dependency findings with their source and verification evidence.">
+  <title>DoxOps · Capsule workspace</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#main" aria-label="DoxOps capsule workspace home"><span class="brand-mark" aria-hidden="true">D</span><span>DoxOps</span></a>
+    <div class="topbar-title"><span class="eyebrow">DEPENDENCY EXIT CAPSULE</span><span class="topbar-subtitle">A guided, evidence-first review</span></div>
+    <span class="local-indicator"><span aria-hidden="true"></span> Local file</span>
+    <label class="button button-primary open-button" for="capsule-file">Open capsule</label>
+    <input id="capsule-file" class="visually-hidden" type="file" accept="application/json,.json" aria-label="Choose a DoxOps capsule JSON file">
+  </header>
+
+  <main id="main" class="shell">
+    <section id="empty-state" class="empty-state" aria-labelledby="empty-title" aria-live="polite">
+      <div class="empty-copy">
+        <p class="eyebrow">LOCAL CAPSULE WORKSPACE</p>
+        <h1 id="empty-title">Make every dependency decision traceable.</h1>
+        <p>Open a DoxOps capsule to move from risk signals to the commands and test results behind them.</p>
+        <div class="empty-steps" aria-label="Review steps">
+          <div class="empty-step"><span>01</span><div><strong>Load a capsule</strong><small>Choose a <code>capsule.json</code></small></div></div>
+          <div class="empty-step"><span>02</span><div><strong>Choose a finding</strong><small>Start with the highest risk</small></div></div>
+          <div class="empty-step"><span>03</span><div><strong>Inspect the proof</strong><small>Follow evidence to its source</small></div></div>
+        </div>
+      </div>
+      <div class="load-card">
+        <div class="file-mark" aria-hidden="true">{ }</div>
+        <h2>Open a run capsule</h2>
+        <p>Select the JSON file from a DoxOps output folder. You can also drop it here.</p>
+        <label class="button button-primary load-button" for="capsule-file">Choose capsule.json</label>
+        <p class="privacy-note"><span aria-hidden="true">●</span> The file stays in this browser tab. Nothing is uploaded.</p>
+        <p id="load-error" class="error-message" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <section id="workspace" class="workspace" hidden aria-label="Dependency capsule">
+      <section class="run-summary panel" aria-labelledby="run-title">
+        <div class="run-heading">
+          <div><p class="eyebrow">ANALYSIS RUN</p><h1 id="run-title">Capsule overview</h1></div>
+          <button id="change-file" class="button button-quiet" type="button">Open another file</button>
+        </div>
+        <div id="run-meta" class="run-meta"></div>
+        <div id="run-stats" class="run-stats" aria-label="Run totals"></div>
+      </section>
+
+      <nav id="workflow" class="workflow" aria-label="Capsule review steps">
+        <button class="workflow-step" type="button" data-step="1" aria-label="Step 1: Open a capsule">
+          <span class="step-index">01</span><span class="step-copy"><strong>Open a capsule</strong><small>Run context loaded</small></span><span class="step-mark" aria-hidden="true">✓</span>
+        </button>
+        <span class="step-connector" aria-hidden="true"></span>
+        <button class="workflow-step" type="button" data-step="2" aria-label="Step 2: Choose a dependency">
+          <span class="step-index">02</span><span class="step-copy"><strong>Choose a dependency</strong><small>Compare risk signals</small></span><span class="step-mark" aria-hidden="true">✓</span>
+        </button>
+        <span class="step-connector" aria-hidden="true"></span>
+        <button class="workflow-step" type="button" data-step="3" aria-label="Step 3: Review the evidence">
+          <span class="step-index">03</span><span class="step-copy"><strong>Review the evidence</strong><small>Trace claims to proof</small></span><span class="step-mark" aria-hidden="true">↗</span>
+        </button>
+      </nav>
+
+      <div class="workspace-grid">
+        <aside id="dependency-panel" class="dependency-panel panel" aria-labelledby="dependencies-title">
+          <div class="section-heading"><div><p class="eyebrow">STEP 2 · FINDINGS</p><h2 id="dependencies-title">Dependencies</h2></div><span id="dependency-count" class="count-pill">0</span></div>
+          <label class="field-label" for="dependency-search">Search by name or signal</label>
+          <input id="dependency-search" class="text-input" type="search" placeholder="Try IMPORT_FAILS" autocomplete="off">
+          <label class="field-label" for="status-filter">Migration status</label>
+          <select id="status-filter" class="text-input">
+            <option value="all">All statuses</option>
+            <option value="verified">Verified</option>
+            <option value="partially-verified">Partially verified</option>
+            <option value="unverified">Unverified</option>
+            <option value="not-attempted">Not attempted</option>
+            <option value="failed">Failed</option>
+          </select>
+          <p id="dependency-hint" class="panel-hint">Select a dependency to inspect its capsule.</p>
+          <div id="dependency-list" class="dependency-list" aria-label="Dependencies"></div>
+          <p id="no-matches" class="no-matches" hidden>No dependencies match these filters. Adjust search or status.</p>
+        </aside>
+
+        <section id="detail-panel" class="detail-panel" aria-label="Selected dependency details" aria-live="polite">
+          <section class="detail-card detail-empty"><span class="detail-empty-icon" aria-hidden="true">02</span><h2>Choose a dependency to begin</h2><p>Start with a high-risk item, then follow its usage and verification evidence.</p></section>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><span>DoxOps · Read-only capsule workspace</span><span><i class="legend-dot observed"></i> Observed <i class="legend-dot verified"></i> Verified <i class="legend-dot ai"></i> AI suggestion</span></footer>
+</body>
+</html>
