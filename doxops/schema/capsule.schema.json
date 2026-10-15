@@ -1082,6 +1082,23 @@
           "title": "Import Probes",
           "type": "array"
         },
+        "installed": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Installed",
+          "type": "object"
+        },
+        "requires": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Requires",
+          "type": "object"
+        },
         "pip_check_ok": {
           "anyOf": [
             {
@@ -1294,6 +1311,7 @@
             "call",
             "private-api",
             "monkeypatch",
+            "no-timeout",
             "tool-command",
             "runtime-call"
           ],
@@ -1422,6 +1440,17 @@
           "type": "null"
         }
       ]
+    },
+    "rationale": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Fact"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "analysis": {
       "anyOf": [

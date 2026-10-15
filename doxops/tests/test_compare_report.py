@@ -35,6 +35,16 @@ def test_compare_classifies_changes() -> None:
     assert next(d for d in comp.deltas if d.nodeid == "b").explanation.startswith("An attribute")
 
 
+def test_skipping_a_passing_test_is_a_regression() -> None:
+    comp = compare(
+        run("3.12", {"ran": "passed", "broken": "failed", "skip": "skipped"}),
+        run("3.12", {"ran": "skipped", "broken": "skipped", "skip": "skipped"}),
+    )
+    changes = {d.nodeid: d.change for d in comp.deltas}
+    assert changes == {"ran": "regressed", "broken": "still-failing", "skip": "still-passing"}
+    assert next(d for d in comp.deltas if d.nodeid == "ran").failure_class == "Skipped"
+
+
 def test_outputs_render(tmp_path: Path) -> None:
     summary = RunSummary(
         tool="doxops",

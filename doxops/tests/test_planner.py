@@ -89,6 +89,7 @@ def test_guards(demo_repo: Path) -> None:
             CodeEdit(file="../outside.py", find="", replace="x"),
             CodeEdit(file="demo/app.py", find="does not exist", replace="x"),
             CodeEdit(file="demo/app.py", find="def load(path):", replace="def load(path:"),
+            CodeEdit(file="conftest.py", find="", replace="collect_ignore_glob = ['*']"),
         ],
     )
     outcomes, syntax_ok = apply_edits(p, ctx_for(demo_repo, "toml"), demo_repo)
@@ -97,9 +98,18 @@ def test_guards(demo_repo: Path) -> None:
     assert "integrity guard" in errors[1]
     assert errors[2] == "path escapes the repository"
     assert errors[3] == "find text not found in file"
+    assert "integrity guard" in errors[5] and not (demo_repo / "conftest.py").exists()
     assert syntax_ok is False
 
 
 def test_invalid_specifier_is_rejected(demo_repo: Path) -> None:
     with pytest.raises(ValueError):
         rewrite_manifests(plan("upgrade", "toml", ">>=1"), ctx_for(demo_repo, "toml"), demo_repo)
+
+
+def test_archived_candidate_is_blocked() -> None:
+    from doxops.models import CandidateVetting
+    from doxops.planner import vetting_blocks
+
+    v = CandidateVetting(package="old", exists_on_index=True, notes=["PyPI marks 'old' as archived."])
+    assert vetting_blocks(v) == ["PyPI marks 'old' as archived."]
