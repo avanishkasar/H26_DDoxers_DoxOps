@@ -117,6 +117,7 @@ class UsageSite(_Model):
         "call",
         "private-api",
         "monkeypatch",
+        "no-timeout",
         "tool-command",
         "runtime-call",
     ]
@@ -376,6 +377,7 @@ class DependencyCapsule(_Model):
     usage: list[UsageSite]
     runtime_usage: list[RuntimeCall]
     proposed_replacement: Fact | None
+    rationale: Fact | None = None
     analysis: Fact | None
     migration_steps: list[Fact]
     suggested_tests: list[Fact]

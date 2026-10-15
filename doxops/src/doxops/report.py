@@ -72,6 +72,8 @@ def capsule_markdown(c: DependencyCapsule, summary: RunSummary) -> str:
             out.append(f"- **[VERIFIED]** `{r.caller_file}:{r.caller_line}` -> `{r.module}.{r.function}` x{r.count}")
     out += ["", "## 4. Proposed replacement", ""]
     out += [_fact(c.proposed_replacement)] if c.proposed_replacement else ["- No proposal (not attempted)."]
+    if c.rationale:
+        out += ["", "Rationale:", "", _fact(c.rationale)]
     if c.analysis:
         out += ["", "Analysis:", "", _fact(c.analysis)]
     out += ["", "## 5. Migration steps", ""]
@@ -196,7 +198,11 @@ def summary_markdown(s: RunSummary) -> str:
         out.append(f"| `{r.name}` | {r.score} | {r.severity.value} | {'yes' if r.at_risk else 'no'} | {top} | {link} |")
     out += ["", "## Migration outcomes", "", "| Dependency | Status | Proposal | Attempts |", "|---|---|---|---|"]
     for c in s.capsules:
-        prop = _md_escape(c.proposed_replacement.text.split(". ")[0]) if c.proposed_replacement else "-"
+        prop = (
+            f"[{BADGE[c.proposed_replacement.provenance]}] {_md_escape(c.proposed_replacement.text)}"
+            if c.proposed_replacement
+            else "-"
+        )
         out.append(f"| `{c.dependency}` | {c.status} | {prop} | {len(c.attempts)} |")
     if s.combined_comparisons:
         out += [
